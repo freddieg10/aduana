@@ -33,19 +33,35 @@ export default function DashboardPage() {
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>{t('dashboard.title')}</Typography>
 
       {/* Summary cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         {[
-          { label: t('dashboard.totalExpedientes'), value: expedientes.length, color: '#1976d2' },
-          { label: t('dashboard.pending'), value: counts.pending, color: '#9e9e9e' },
-          { label: t('dashboard.inProgress'), value: counts['in-progress'], color: '#1976d2' },
-          { label: t('dashboard.completed'), value: counts.completed, color: '#2e7d32' },
-          { label: t('dashboard.alerts'), value: counts.alert, color: '#ed6c02' },
-        ].map((card) => (
+          { label: t('dashboard.totalExpedientes'), value: expedientes.length, color: '#6366f1' },
+          { label: t('dashboard.pending'), value: counts.pending, color: '#94a3b8' },
+          { label: t('dashboard.inProgress'), value: counts['in-progress'], color: '#3b82f6' },
+          { label: t('dashboard.completed'), value: counts.completed, color: '#22c55e' },
+          { label: t('dashboard.alerts'), value: counts.alert, color: '#f43f5e' },
+        ].map((card, idx) => (
           <Grid size={{ xs: 6, md: 2.4 }} key={card.label}>
-            <Card sx={{ borderTop: `4px solid ${card.color}` }}>
-              <CardContent>
-                <Typography variant="body2" color="text.secondary">{card.label}</Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>{card.value}</Typography>
+            <Card sx={{ 
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0, left: 0, right: 0,
+                height: 4,
+                backgroundColor: card.color,
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16
+              }
+            }}>
+              <CardContent sx={{ pb: '16px !important' }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</Typography>
+                <Typography variant="h3" sx={{ fontWeight: 800, color: '#0f172a' }}>{card.value}</Typography>
               </CardContent>
             </Card>
           </Grid>

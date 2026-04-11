@@ -103,30 +103,58 @@ export default function ExpedienteListPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>{t('expediente.title')}</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setTypeDialogOpen(true)}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a' }}>{t('expediente.title')}</Typography>
+        <Button variant="contained" size="large" startIcon={<Add />} onClick={() => setTypeDialogOpen(true)}
+          sx={{ boxShadow: '0 4px 14px 0 rgba(99, 102, 241, 0.39)', px: 3 }}>
           {t('expediente.newExpediente')}
         </Button>
       </Box>
 
       {/* Column-level filters */}
-      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-        <TextField size="small" label={t('expediente.reference')} value={refFilter} onChange={(e) => setRefFilter(e.target.value)} sx={{ width: 180 }} />
-        <TextField size="small" label={t('expediente.client')} value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} sx={{ width: 200 }} />
-        <TextField size="small" label={t('expediente.status')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} sx={{ width: 150 }} />
-        <TextField size="small" label={t('expediente.tipo')} value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} sx={{ width: 150 }} />
+      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap', alignItems: 'center', p: 2, bgcolor: '#ffffff', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', mr: 1, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter List</Typography>
+        <TextField size="small" placeholder={t('expediente.reference')} value={refFilter} onChange={(e) => setRefFilter(e.target.value)} sx={{ width: 180, '& .MuiOutlinedInput-root': { bgcolor: '#f8fafc' } }} />
+        <TextField size="small" placeholder={t('expediente.client')} value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} sx={{ width: 220, '& .MuiOutlinedInput-root': { bgcolor: '#f8fafc' } }} />
+        <TextField size="small" placeholder={t('expediente.status')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} sx={{ width: 160, '& .MuiOutlinedInput-root': { bgcolor: '#f8fafc' } }} />
+        <TextField size="small" placeholder={t('expediente.tipo')} value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} sx={{ width: 160, '& .MuiOutlinedInput-root': { bgcolor: '#f8fafc' } }} />
       </Box>
 
-      <DataGrid
-        rows={filtered}
-        columns={columns}
-        autoHeight
-        pageSizeOptions={[10, 25, 50]}
-        initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-        disableRowSelectionOnClick
-        sx={{ bgcolor: 'background.paper' }}
-      />
+      <Box sx={{
+        bgcolor: '#fff',
+        borderRadius: 4,
+        overflow: 'hidden',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
+      }}>
+        <DataGrid
+          rows={filtered}
+          columns={columns}
+          autoHeight
+          pageSizeOptions={[10, 25, 50]}
+          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+          disableRowSelectionOnClick
+          sx={{
+            border: 'none',
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: '#f8fafc',
+              borderBottom: '1px solid #e2e8f0',
+            },
+            '& .MuiDataGrid-columnHeaderTitle': {
+              fontWeight: 700,
+              color: '#475569',
+              textTransform: 'uppercase',
+              fontSize: '0.75rem',
+              letterSpacing: '0.05em',
+            },
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #f1f5f9',
+            },
+            '& .MuiDataGrid-row:hover': {
+              backgroundColor: '#f8fafc',
+            },
+          }}
+        />
+      </Box>
 
       {/* Type selection dialog */}
       <Dialog open={typeDialogOpen} onClose={() => setTypeDialogOpen(false)} maxWidth="xs" fullWidth>

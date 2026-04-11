@@ -14,7 +14,7 @@ import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { useExpedientesStore } from '../store/expedientesStore';
 
-const DRAWER_WIDTH = 240;
+const DRAWER_WIDTH = 280;
 
 const NAV_ITEMS = [
   { key: 'dashboard', path: '/dashboard', icon: <Dashboard /> },
@@ -51,16 +51,34 @@ export default function Layout() {
           Aduana
         </Typography>
       </Toolbar>
-      <Divider />
-      <List>
+      <Divider sx={{ mb: 2, borderStyle: 'dashed' }} />
+      <List sx={{ px: 2 }}>
         {NAV_ITEMS.map(({ key, path, icon }) => (
           <ListItemButton
             key={key}
             selected={location.pathname.startsWith(path)}
             onClick={() => { navigate(path); setMobileOpen(false); }}
+            sx={{
+              borderRadius: 3,
+              mb: 1,
+              '&.Mui-selected': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+                '& .MuiListItemIcon-root': {
+                  color: 'primary.contrastText',
+                },
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                }
+              }
+            }}
           >
-            <ListItemIcon>{icon}</ListItemIcon>
-            <ListItemText primary={t(`nav.${key}`)} />
+            <ListItemIcon sx={{ minWidth: 40 }}>{icon}</ListItemIcon>
+            <ListItemText
+              primary={t(`nav.${key}`)}
+              primaryTypographyProps={{ fontWeight: location.pathname.startsWith(path) ? 700 : 500 }}
+            />
           </ListItemButton>
         ))}
       </List>
@@ -87,7 +105,7 @@ export default function Layout() {
             exclusive
             value={i18n.language}
             onChange={(_, lang) => lang && i18n.changeLanguage(lang)}
-            sx={{ mr: 2, '& .MuiToggleButton-root': { color: 'inherit', borderColor: 'rgba(255,255,255,.3)' } }}
+            sx={{ mr: 2, '& .MuiToggleButton-root': { color: 'inherit', borderColor: 'rgba(0,0,0,0.1)' } }}
           >
             <ToggleButton value="es">ES</ToggleButton>
             <ToggleButton value="en">EN</ToggleButton>
@@ -150,18 +168,18 @@ export default function Layout() {
       {/* Sidebar (responsive) */}
       <Box component="nav" sx={{ width: { sm: DRAWER_WIDTH }, flexShrink: { sm: 0 } }}>
         <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: true }}
-          sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}>
+          sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { width: DRAWER_WIDTH, borderRight: 'none' } }}>
           {drawer}
         </Drawer>
         <Drawer variant="permanent"
-          sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' } }}
+          sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box', borderRight: '1px dashed rgba(148, 163, 184, 0.4)', bgcolor: '#ffffff' } }}
           open>
           {drawer}
         </Drawer>
       </Box>
 
       {/* Main content */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` } }}>
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, sm: 3, md: 4 }, width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
         <Toolbar />
         <Outlet />
       </Box>
