@@ -52,7 +52,13 @@
     "checklist": "Checklist",
     "history": "History",
     "search": "Search expedientes...",
-    "noResults": "No expedientes found"
+    "noResults": "No expedientes found",
+    "tipo": "Type",
+    "selectTipo": "Select Expediente Type",
+    "tipo_importacion": "Import",
+    "tipo_exportacion": "Export",
+    "tipo_importacion_desc": "Import customs clearance",
+    "tipo_exportacion_desc": "Export customs clearance"
   },
   "invoice": {
     "number": "Invoice Number",
@@ -140,7 +146,10 @@
     "unitario": "Unit Price",
     "facturaDva": "DVA Invoice",
     "addPartida": "Add Line Item",
-    "referenceHint": "Leave empty to use Declaration No."
+    "referenceHint": "Leave empty to use Declaration No.",
+    "importadorHint": "Editing the importer will automatically update the consignee",
+    "consignatarioHint": "Auto-populated from importer data. Editing here unlinks the sync.",
+    "importPartidasXlsx": "Import Line Items from Excel"
   },
   "status": {
     "pending": "Pending",

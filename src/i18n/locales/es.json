@@ -52,7 +52,13 @@
     "checklist": "Lista de Verificación",
     "history": "Historial",
     "search": "Buscar expedientes...",
-    "noResults": "No se encontraron expedientes"
+    "noResults": "No se encontraron expedientes",
+    "tipo": "Tipo",
+    "selectTipo": "Seleccione Tipo de Expediente",
+    "tipo_importacion": "Importación",
+    "tipo_exportacion": "Exportación",
+    "tipo_importacion_desc": "Despacho de mercancías importadas",
+    "tipo_exportacion_desc": "Despacho de mercancías para exportación"
   },
   "invoice": {
     "number": "Número de Factura",
@@ -140,7 +146,10 @@
     "unitario": "Unitario",
     "facturaDva": "Factura DVA",
     "addPartida": "Agregar Partida",
-    "referenceHint": "Dejar vacío para usar No. Declaración"
+    "referenceHint": "Dejar vacío para usar No. Declaración",
+    "importadorHint": "Al editar importador se actualiza automáticamente el consignatario",
+    "consignatarioHint": "Se autocompleta con los datos del importador. Editar aquí desvincula la sincronización.",
+    "importPartidasXlsx": "Importar Partidas desde Excel"
   },
   "status": {
     "pending": "Pendiente",

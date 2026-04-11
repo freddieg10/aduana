@@ -123,6 +123,7 @@ export default function ImportExportPage() {
       const first = rows[0];
       return {
         reference: ref,
+        tipoExpediente: 'importacion' as const,
         status: 'pending' as const,
         checklist: DEFAULT_CHECKLIST.map((label) => ({ id: crypto.randomUUID(), label, completed: false, completedAt: null })),
         declaracion: {

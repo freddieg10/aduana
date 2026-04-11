@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -6,12 +6,33 @@ import {
   Grid, LinearProgress, MenuItem, Tab, Tabs, TextField, Typography, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
 } from '@mui/material';
-import { ArrowBack, Save, Delete, Add } from '@mui/icons-material';
+import { ArrowBack, Save, Delete, Add, Upload, FlightLand, FlightTakeoff } from '@mui/icons-material';
+import * as XLSX from 'xlsx';
 import { useExpedientesStore, computeProgress } from '../../store/expedientesStore';
 import type {
   ExpedienteStatus, Declaracion, EntidadAduanal, Suplidor,
   DocumentoFactura, Contenedor, Valores, RegimenAduanero, PesoMercancia, Partida, TipoCarga,
 } from '../../types';
+
+/* --- Option lists for dropdowns --- */
+const TIPOS_DESPACHO = ['MANIFIESTO', 'NO MANIFIESTO', 'ANTICIPADO', 'URGENTE'];
+const ADMINISTRACIONES = [
+  { codigo: '10010', nombre: 'ADMINISTRACION SANTO DOMINGO' },
+  { codigo: '10020', nombre: 'ADMINISTRACION PUERTO PLATA' },
+  { codigo: '10030', nombre: 'ADMINISTRACION HAINA ORIENTAL' },
+  { codigo: '10040', nombre: 'ADMINISTRACION CAUCEDO' },
+  { codigo: '10050', nombre: 'ADMINISTRACION BOCA CHICA' },
+  { codigo: '10060', nombre: 'ADMINISTRACION SAN PEDRO DE MACORIS' },
+];
+const REGIMENES = [
+  { codigo: '1', nombre: 'DESPACHO A CONSUMO' },
+  { codigo: '2', nombre: 'ADMISION TEMPORAL' },
+  { codigo: '3', nombre: 'DEPOSITO DE ADUANAS' },
+  { codigo: '4', nombre: 'REEXPORTACION' },
+  { codigo: '5', nombre: 'TRANSITO ADUANERO' },
+  { codigo: '6', nombre: 'ZONA FRANCA' },
+];
+const UNIDADES = ['KILOGRAMOS', 'UNIDADES', 'LITROS', 'METROS', 'PARES', 'DOCENAS', 'TONELADAS'];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>{children}</Typography>;
@@ -25,9 +46,11 @@ export default function ExpedienteDetailPage() {
   const update = useExpedientesStore((s) => s.update);
   const toggleChecklistItem = useExpedientesStore((s) => s.toggleChecklistItem);
   const remove = useExpedientesStore((s) => s.remove);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [tab, setTab] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [importError, setImportError] = useState('');
 
   const [reference, setReference] = useState(expediente?.reference ?? '');
   const [status, setStatus] = useState<ExpedienteStatus>(expediente?.status ?? 'pending');
@@ -37,9 +60,25 @@ export default function ExpedienteDetailPage() {
     noDeclaracion: '', docEmbarque: '', depositoDestino: '', puertoEntrada: '',
     paisProcedenciaCodigo: '', paisProcedenciaNombre: '', facturaComercialNo: '',
   });
-  const [importador, setImportador] = useState<EntidadAduanal>(expediente?.importador ?? { codigo: '', nombre: '' });
+
+  /* Partes — with importador→consignatario sync */
+  const [importadorState, setImportadorState] = useState<EntidadAduanal>(expediente?.importador ?? { codigo: '', nombre: '' });
+  const [consignatarioEdited, setConsignatarioEdited] = useState(
+    // If existing data already differs, mark as manually edited
+    expediente ? (expediente.importador.codigo !== expediente.consignatario.codigo || expediente.importador.nombre !== expediente.consignatario.nombre) : false
+  );
+  const [consignatarioState, setConsignatarioState] = useState<EntidadAduanal>(expediente?.consignatario ?? { codigo: '', nombre: '' });
+
+  const setImportador = (val: EntidadAduanal) => {
+    setImportadorState(val);
+    if (!consignatarioEdited) setConsignatarioState(val);
+  };
+  const setConsignatario = (val: EntidadAduanal) => {
+    setConsignatarioEdited(true);
+    setConsignatarioState(val);
+  };
+
   const [agenteAduanal, setAgenteAduanal] = useState<EntidadAduanal>(expediente?.agenteAduanal ?? { codigo: '', nombre: '' });
-  const [consignatario, setConsignatario] = useState<EntidadAduanal>(expediente?.consignatario ?? { codigo: '', nombre: '' });
   const [compradorExportacion, setCompradorExportacion] = useState<EntidadAduanal>(expediente?.compradorExportacion ?? { codigo: '', nombre: '' });
   const [suplidores, setSuplidores] = useState<Suplidor[]>(expediente?.suplidores ?? []);
   const [documentos, setDocumentos] = useState<DocumentoFactura[]>(expediente?.documentos ?? []);
@@ -63,8 +102,8 @@ export default function ExpedienteDetailPage() {
 
   const handleSave = () => {
     update(id!, {
-      reference, status, notes, declaracion, importador, agenteAduanal,
-      consignatario, compradorExportacion, suplidores, documentos, contenedores,
+      reference, status, notes, declaracion, importador: importadorState, agenteAduanal,
+      consignatario: consignatarioState, compradorExportacion, suplidores, documentos, contenedores,
       tipoCarga, valores, regimenAduanero, pesoMercancia, partidas,
     });
     setSaved(true);
@@ -77,6 +116,51 @@ export default function ExpedienteDetailPage() {
   const addDocumento = () => setDocumentos([...documentos, { id: crypto.randomUUID(), numeroFactura: '', fechaFactura: '', codigoSuplidor: '', valorFactura: 0 }]);
   const addContenedor = () => setContenedores([...contenedores, { id: crypto.randomUUID(), tipo: '', numero: '', sello1: '', sello2: '' }]);
   const addPartida = () => setPartidas([...partidas, { id: crypto.randomUUID(), codigoPartida: '', descripcion: '', organico: false, cantidad: 0, unidad: 'KILOGRAMOS', paisOrigen: '', valorFob: 0, unitario: 0, facturaDva: '' }]);
+  const removePartida = (idx: number) => setPartidas(partidas.filter((_, i) => i !== idx));
+
+  /* Import partidas from Excel */
+  const handleImportPartidas = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target?.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+        const rows: Partida[] = data.map((row) => ({
+          id: crypto.randomUUID(),
+          codigoPartida: String(row['codigoPartida'] || row['Partida'] || row['Codigo'] || ''),
+          descripcion: String(row['descripcion'] || row['Descripción'] || row['Descripcion'] || ''),
+          organico: Boolean(row['organico'] || row['Orgánico'] || false),
+          cantidad: Number(row['cantidad'] || row['Cantidad'] || 0),
+          unidad: String(row['unidad'] || row['Unidad'] || 'KILOGRAMOS'),
+          paisOrigen: String(row['paisOrigen'] || row['País Origen'] || row['PaisOrigen'] || ''),
+          valorFob: Number(row['valorFob'] || row['Valor FOB'] || row['ValorFob'] || 0),
+          unitario: Number(row['unitario'] || row['Unitario'] || 0),
+          facturaDva: String(row['facturaDva'] || row['Factura DVA'] || row['FacturaDva'] || ''),
+        }));
+        setPartidas((prev) => [...prev, ...rows]);
+      } catch {
+        setImportError(t('importExport.parseError'));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
+  /* Administración dropdown handler */
+  const handleAdminChange = (codigo: string) => {
+    const admin = ADMINISTRACIONES.find((a) => a.codigo === codigo);
+    setDeclaracion({ ...declaracion, administracionCodigo: codigo, administracionNombre: admin?.nombre ?? '' });
+  };
+
+  /* Régimen dropdown handler */
+  const handleRegimenChange = (codigo: string) => {
+    const reg = REGIMENES.find((r) => r.codigo === codigo);
+    setRegimenAduanero({ ...regimenAduanero, codigo, nombre: reg?.nombre ?? '' });
+  };
 
   const statusColor = expediente.status === 'completed' ? 'success' : expediente.status === 'alert' ? 'warning' : 'primary';
 
@@ -88,6 +172,11 @@ export default function ExpedienteDetailPage() {
         <Typography variant="h5" sx={{ fontWeight: 700, flexGrow: 1 }}>
           {expediente.reference}
         </Typography>
+        <Chip
+          icon={expediente.tipoExpediente === 'importacion' ? <FlightLand fontSize="small" /> : <FlightTakeoff fontSize="small" />}
+          label={t(`expediente.tipo_${expediente.tipoExpediente}`)}
+          color={expediente.tipoExpediente === 'importacion' ? 'info' : 'secondary'}
+        />
         <Chip label={t(`status.${expediente.status}`)} color={statusColor} />
         <Typography variant="body2" sx={{ fontWeight: 600 }}>{progress}%</Typography>
       </Box>
@@ -111,11 +200,17 @@ export default function ExpedienteDetailPage() {
         <Card><CardContent>
           <SectionTitle>{t('detail.declaracion')}</SectionTitle>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.idSecuencia')} value={declaracion.idSecuencia} onChange={(e) => setDeclaracion({ ...declaracion, idSecuencia: e.target.value })} /></Grid>
             <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth type="date" label="ETA" value={declaracion.eta} onChange={(e) => setDeclaracion({ ...declaracion, eta: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} /></Grid>
-            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.tipoDespacho')} value={declaracion.tipoDespacho} onChange={(e) => setDeclaracion({ ...declaracion, tipoDespacho: e.target.value })} /></Grid>
-            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.administracionCodigo')} value={declaracion.administracionCodigo} onChange={(e) => setDeclaracion({ ...declaracion, administracionCodigo: e.target.value })} /></Grid>
-            <Grid size={{ xs: 12, sm: 8 }}><TextField fullWidth label={t('detail.administracionNombre')} value={declaracion.administracionNombre} onChange={(e) => setDeclaracion({ ...declaracion, administracionNombre: e.target.value })} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField select fullWidth label={t('detail.tipoDespacho')} value={declaracion.tipoDespacho} onChange={(e) => setDeclaracion({ ...declaracion, tipoDespacho: e.target.value })}>
+                {TIPOS_DESPACHO.map((td) => <MenuItem key={td} value={td}>{td}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField select fullWidth label={t('detail.administracionNombre')} value={declaracion.administracionCodigo} onChange={(e) => handleAdminChange(e.target.value)}>
+                {ADMINISTRACIONES.map((a) => <MenuItem key={a.codigo} value={a.codigo}>{a.nombre}</MenuItem>)}
+              </TextField>
+            </Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('detail.noDeclaracion')} value={declaracion.noDeclaracion} onChange={(e) => setDeclaracion({ ...declaracion, noDeclaracion: e.target.value })} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('detail.docEmbarque')} value={declaracion.docEmbarque} onChange={(e) => setDeclaracion({ ...declaracion, docEmbarque: e.target.value })} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('detail.depositoDestino')} value={declaracion.depositoDestino} onChange={(e) => setDeclaracion({ ...declaracion, depositoDestino: e.target.value })} /></Grid>
@@ -151,9 +246,10 @@ export default function ExpedienteDetailPage() {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Card><CardContent>
             <SectionTitle>{t('detail.importador')}</SectionTitle>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>{t('detail.importadorHint')}</Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.codigo')} value={importador.codigo} onChange={(e) => setImportador({ ...importador, codigo: e.target.value })} /></Grid>
-              <Grid size={{ xs: 12, sm: 8 }}><TextField fullWidth label={t('detail.nombre')} value={importador.nombre} onChange={(e) => setImportador({ ...importador, nombre: e.target.value })} /></Grid>
+              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.codigo')} value={importadorState.codigo} onChange={(e) => setImportador({ ...importadorState, codigo: e.target.value })} /></Grid>
+              <Grid size={{ xs: 12, sm: 8 }}><TextField fullWidth label={t('detail.nombre')} value={importadorState.nombre} onChange={(e) => setImportador({ ...importadorState, nombre: e.target.value })} /></Grid>
             </Grid>
           </CardContent></Card>
 
@@ -167,9 +263,10 @@ export default function ExpedienteDetailPage() {
 
           <Card><CardContent>
             <SectionTitle>{t('detail.consignatario')}</SectionTitle>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>{t('detail.consignatarioHint')}</Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.codigo')} value={consignatario.codigo} onChange={(e) => setConsignatario({ ...consignatario, codigo: e.target.value })} /></Grid>
-              <Grid size={{ xs: 12, sm: 8 }}><TextField fullWidth label={t('detail.nombre')} value={consignatario.nombre} onChange={(e) => setConsignatario({ ...consignatario, nombre: e.target.value })} /></Grid>
+              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.codigo')} value={consignatarioState.codigo} onChange={(e) => setConsignatario({ ...consignatarioState, codigo: e.target.value })} /></Grid>
+              <Grid size={{ xs: 12, sm: 8 }}><TextField fullWidth label={t('detail.nombre')} value={consignatarioState.nombre} onChange={(e) => setConsignatario({ ...consignatarioState, nombre: e.target.value })} /></Grid>
             </Grid>
           </CardContent></Card>
 
@@ -284,9 +381,12 @@ export default function ExpedienteDetailPage() {
           <Card><CardContent>
             <SectionTitle>{t('detail.regimenAduanero')}</SectionTitle>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 3 }}><TextField fullWidth label={t('detail.codigo')} value={regimenAduanero.codigo} onChange={(e) => setRegimenAduanero({ ...regimenAduanero, codigo: e.target.value })} /></Grid>
-              <Grid size={{ xs: 12, sm: 5 }}><TextField fullWidth label={t('detail.nombre')} value={regimenAduanero.nombre} onChange={(e) => setRegimenAduanero({ ...regimenAduanero, nombre: e.target.value })} /></Grid>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.acuerdo')} value={regimenAduanero.acuerdo} onChange={(e) => setRegimenAduanero({ ...regimenAduanero, acuerdo: e.target.value })} /></Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField select fullWidth label={t('detail.regimenAduanero')} value={regimenAduanero.codigo} onChange={(e) => handleRegimenChange(e.target.value)}>
+                  {REGIMENES.map((r) => <MenuItem key={r.codigo} value={r.codigo}>{r.nombre}</MenuItem>)}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('detail.acuerdo')} value={regimenAduanero.acuerdo} onChange={(e) => setRegimenAduanero({ ...regimenAduanero, acuerdo: e.target.value })} /></Grid>
             </Grid>
           </CardContent></Card>
 
@@ -303,10 +403,18 @@ export default function ExpedienteDetailPage() {
         </Box>
       )}
 
-      {/* TAB 4 — PARTIDAS */}
+      {/* TAB 4 — PARTIDAS (with import from Excel) */}
       {tab === 4 && (
         <Card><CardContent>
-          <SectionTitle>{t('detail.partidas')} ({partidas.length})</SectionTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <SectionTitle>{t('detail.partidas')} ({partidas.length})</SectionTitle>
+            <Box sx={{ flexGrow: 1 }} />
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={handleImportPartidas} />
+            <Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => fileRef.current?.click()}>
+              {t('detail.importPartidasXlsx')}
+            </Button>
+          </Box>
+          {importError && <Alert severity="error" sx={{ mb: 2 }}>{importError}</Alert>}
           <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
             <Table size="small">
               <TableHead>
@@ -320,6 +428,7 @@ export default function ExpedienteDetailPage() {
                   <TableCell align="right">{t('detail.valorFob')}</TableCell>
                   <TableCell align="right">{t('detail.unitario')}</TableCell>
                   <TableCell>{t('detail.facturaDva')}</TableCell>
+                  <TableCell width={50}></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -329,11 +438,18 @@ export default function ExpedienteDetailPage() {
                     <TableCell><TextField size="small" variant="standard" value={p.descripcion} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], descripcion: e.target.value }; setPartidas(c); }} sx={{ minWidth: 180 }} /></TableCell>
                     <TableCell align="center"><Checkbox size="small" checked={p.organico} onChange={() => { const c = [...partidas]; c[i] = { ...c[i], organico: !c[i].organico }; setPartidas(c); }} /></TableCell>
                     <TableCell align="right"><TextField size="small" variant="standard" type="number" value={p.cantidad} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], cantidad: Number(e.target.value) }; setPartidas(c); }} sx={{ width: 90 }} /></TableCell>
-                    <TableCell><TextField size="small" variant="standard" value={p.unidad} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], unidad: e.target.value }; setPartidas(c); }} sx={{ width: 100 }} /></TableCell>
+                    <TableCell>
+                      <TextField select size="small" variant="standard" value={p.unidad} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], unidad: e.target.value }; setPartidas(c); }} sx={{ width: 120 }}>
+                        {UNIDADES.map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+                      </TextField>
+                    </TableCell>
                     <TableCell><TextField size="small" variant="standard" value={p.paisOrigen} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], paisOrigen: e.target.value }; setPartidas(c); }} sx={{ width: 90 }} /></TableCell>
                     <TableCell align="right"><TextField size="small" variant="standard" type="number" value={p.valorFob} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], valorFob: Number(e.target.value) }; setPartidas(c); }} sx={{ width: 100 }} /></TableCell>
                     <TableCell align="right"><TextField size="small" variant="standard" type="number" value={p.unitario} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], unitario: Number(e.target.value) }; setPartidas(c); }} sx={{ width: 80 }} /></TableCell>
                     <TableCell><TextField size="small" variant="standard" value={p.facturaDva} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], facturaDva: e.target.value }; setPartidas(c); }} sx={{ width: 90 }} /></TableCell>
+                    <TableCell>
+                      <Button size="small" color="error" onClick={() => removePartida(i)} sx={{ minWidth: 0, p: 0.5 }}>✕</Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

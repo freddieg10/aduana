@@ -103,9 +103,12 @@ export interface Partida {
 
 export type ExpedienteStatus = 'pending' | 'in-progress' | 'completed' | 'alert';
 
+export type TipoExpediente = 'importacion' | 'exportacion';
+
 export interface Expediente {
   id: string;
   reference: string;
+  tipoExpediente: TipoExpediente;
   status: ExpedienteStatus;
   checklist: ChecklistItem[];
 
