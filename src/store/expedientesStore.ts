@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { Expediente, ExpedienteStatus } from '../types';
+import { ExpedienteStatus } from '../types';
+import type { Expediente } from '../types';
 
 const DEFAULT_CHECKLIST = [
   { id: 'chk-1', label: 'Documentos de importación recibidos', completed: false, completedAt: null },
@@ -23,7 +24,7 @@ function makeChecklist(completedCount: number) {
 
 const SEED_DATA: Expediente[] = [
   {
-    id: '1', reference: 'FALTA BL FAC 4600527', tipoExpediente: 'importacion', status: 'in-progress', checklist: makeChecklist(5),
+    id: '1', reference: 'FALTA BL FAC 4600527', tipoExpediente: 'importacion', status: ExpedienteStatus.Presentado, checklist: makeChecklist(5),
     declaracion: {
       idSecuencia: '4721', eta: '2026-02-25', tipoDespacho: 'NO MANIFIESTO',
       administracionCodigo: '10030', administracionNombre: 'ADMINISTRACION HAINA ORIENTAL',
@@ -55,7 +56,7 @@ const SEED_DATA: Expediente[] = [
     createdAt: '2026-02-20T08:00:00Z', updatedAt: '2026-04-05T14:30:00Z',
   },
   {
-    id: '2', reference: 'DEC-2026-002', tipoExpediente: 'importacion', status: 'pending', checklist: makeChecklist(1),
+    id: '2', reference: 'DEC-2026-002', tipoExpediente: 'importacion', status: ExpedienteStatus.Registrado, checklist: makeChecklist(1),
     declaracion: {
       idSecuencia: '4722', eta: '2026-04-25', tipoDespacho: 'MANIFIESTO',
       administracionCodigo: '10020', administracionNombre: 'ADMINISTRACION PUERTO PLATA',
@@ -80,7 +81,7 @@ const SEED_DATA: Expediente[] = [
     notes: '', assignedUserId: '2', createdAt: '2026-04-01T09:00:00Z', updatedAt: '2026-04-01T09:00:00Z',
   },
   {
-    id: '3', reference: 'DEC-2026-003', tipoExpediente: 'importacion', status: 'completed', checklist: makeChecklist(8),
+    id: '3', reference: 'DEC-2026-003', tipoExpediente: 'importacion', status: ExpedienteStatus.Completo, checklist: makeChecklist(8),
     declaracion: {
       idSecuencia: '4700', eta: '2026-03-15', tipoDespacho: 'MANIFIESTO',
       administracionCodigo: '10010', administracionNombre: 'ADMINISTRACION SANTO DOMINGO',
@@ -106,7 +107,7 @@ const SEED_DATA: Expediente[] = [
     notes: 'Despacho completado sin incidencias', assignedUserId: '2', createdAt: '2026-02-15T10:00:00Z', updatedAt: '2026-03-20T16:00:00Z',
   },
   {
-    id: '4', reference: 'DEC-2026-004', tipoExpediente: 'importacion', status: 'alert', checklist: makeChecklist(3),
+    id: '4', reference: 'DEC-2026-004', tipoExpediente: 'importacion', status: ExpedienteStatus.PendienteInfo, checklist: makeChecklist(3),
     declaracion: {
       idSecuencia: '4730', eta: '2026-04-08', tipoDespacho: 'NO MANIFIESTO',
       administracionCodigo: '10030', administracionNombre: 'ADMINISTRACION HAINA ORIENTAL',
@@ -131,7 +132,7 @@ const SEED_DATA: Expediente[] = [
     notes: 'ALERTA: Falta permiso sanitario', assignedUserId: '2', createdAt: '2026-03-28T11:00:00Z', updatedAt: '2026-04-08T08:00:00Z',
   },
   {
-    id: '5', reference: 'DEC-2026-005', tipoExpediente: 'importacion', status: 'in-progress', checklist: makeChecklist(6),
+    id: '5', reference: 'DEC-2026-005', tipoExpediente: 'importacion', status: ExpedienteStatus.ProcesoVerificacion, checklist: makeChecklist(6),
     declaracion: {
       idSecuencia: '4740', eta: '2026-04-18', tipoDespacho: 'MANIFIESTO',
       administracionCodigo: '10040', administracionNombre: 'ADMINISTRACION CAUCEDO',
@@ -157,7 +158,7 @@ const SEED_DATA: Expediente[] = [
     notes: 'Envío parcial — segundo embarque pendiente', assignedUserId: '2', createdAt: '2026-04-02T07:00:00Z', updatedAt: '2026-04-09T12:00:00Z',
   },
   {
-    id: '6', reference: 'DEC-2026-006', tipoExpediente: 'importacion', status: 'pending', checklist: makeChecklist(0),
+    id: '6', reference: 'DEC-2026-006', tipoExpediente: 'importacion', status: ExpedienteStatus.Manifestado, checklist: makeChecklist(0),
     declaracion: {
       idSecuencia: '4750', eta: '2026-05-01', tipoDespacho: 'MANIFIESTO',
       administracionCodigo: '10020', administracionNombre: 'ADMINISTRACION PUERTO PLATA',
@@ -251,8 +252,8 @@ export const useExpedientesStore = create<ExpedientesState>((set, get) => ({
         );
         const completedCount = checklist.filter((c) => c.completed).length;
         let status: ExpedienteStatus = e.status;
-        if (completedCount === checklist.length) status = 'completed';
-        else if (completedCount > 0) status = 'in-progress';
+        if (completedCount === checklist.length) status = ExpedienteStatus.Completo;
+        else if (completedCount > 0) status = ExpedienteStatus.Verificado;
         return { ...e, checklist, status, updatedAt: new Date().toISOString() };
       }),
     }));

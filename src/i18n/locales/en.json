@@ -34,10 +34,17 @@
     "client": "Client",
     "status": "Status",
     "progress": "Progress",
+    "fechaLlegada": "Arrival Date",
+    "digitador": "Digitador",
+    "gestor": "Gestor",
     "createdAt": "Created",
     "updatedAt": "Last Updated",
     "assignedTo": "Assigned To",
     "notes": "Notes",
+    "observations": "Observations",
+    "noObservations": "No observations recorded",
+    "addObservations": "Add observation",
+    "newObservation": "New observation",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -152,10 +159,15 @@
     "importPartidasXlsx": "Import Line Items from Excel"
   },
   "status": {
-    "pending": "Pending",
-    "in-progress": "In Progress",
-    "completed": "Completed",
-    "alert": "Alert"
+    "registrado": "Registered",
+    "manifestado": "Manifested",
+    "pendiente_info": "Pending Info",
+    "pre_liquidado": "Pre-Liquidated",
+    "presentado": "Presented",
+    "proceso_verificacion": "Verification Process",
+    "verificado": "Verified",
+    "despacho": "Dispatch",
+    "completo": "Complete"
   },
   "importExport": {
     "title": "Import / Export",

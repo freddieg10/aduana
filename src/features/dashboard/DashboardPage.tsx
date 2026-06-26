@@ -15,7 +15,8 @@ import {
   PendingActions,
   Loop,
   CheckCircle,
-  Warning,
+  Assignment,
+  LocalShipping,
 } from "@mui/icons-material";
 import {
   useExpedientesStore,
@@ -23,19 +24,21 @@ import {
 } from "../../store/expedientesStore";
 import { useNotificationStore } from "../../store/notificationStore";
 import { useNavigate } from "react-router";
-import type { ExpedienteStatus } from "../../types";
+import { ExpedienteStatus } from "../../types";
 
 const STATUS_CONFIG: Record<
   ExpedienteStatus,
-  {
-    color: "default" | "primary" | "success" | "warning";
-    icon: React.ReactNode;
-  }
+  { color: "default" | "primary" | "info" | "success" | "warning"; icon: React.ReactNode }
 > = {
-  pending: { color: "default", icon: <PendingActions /> },
-  "in-progress": { color: "primary", icon: <Loop /> },
-  completed: { color: "success", icon: <CheckCircle /> },
-  alert: { color: "warning", icon: <Warning /> },
+  [ExpedienteStatus.Registrado]:          { color: "default",  icon: <Assignment /> },
+  [ExpedienteStatus.Manifestado]:         { color: "default",  icon: <Assignment /> },
+  [ExpedienteStatus.PendienteInfo]:       { color: "warning",  icon: <PendingActions /> },
+  [ExpedienteStatus.PreLiquidado]:        { color: "warning",  icon: <PendingActions /> },
+  [ExpedienteStatus.Presentado]:          { color: "primary",  icon: <Loop /> },
+  [ExpedienteStatus.ProcesoVerificacion]: { color: "primary",  icon: <Loop /> },
+  [ExpedienteStatus.Verificado]:          { color: "info",     icon: <CheckCircle /> },
+  [ExpedienteStatus.Despacho]:            { color: "info",     icon: <LocalShipping /> },
+  [ExpedienteStatus.Completo]:            { color: "success",  icon: <CheckCircle /> },
 };
 
 export default function DashboardPage() {
@@ -46,14 +49,22 @@ export default function DashboardPage() {
   const notifications = useNotificationStore((s) => s.notifications);
 
   const counts: Record<ExpedienteStatus, number> = {
-    pending: 0,
-    "in-progress": 0,
-    completed: 0,
-    alert: 0,
+    [ExpedienteStatus.Registrado]: 0,
+    [ExpedienteStatus.Manifestado]: 0,
+    [ExpedienteStatus.PendienteInfo]: 0,
+    [ExpedienteStatus.PreLiquidado]: 0,
+    [ExpedienteStatus.Presentado]: 0,
+    [ExpedienteStatus.ProcesoVerificacion]: 0,
+    [ExpedienteStatus.Verificado]: 0,
+    [ExpedienteStatus.Despacho]: 0,
+    [ExpedienteStatus.Completo]: 0,
   };
   expedientes.forEach((e) => counts[e.status]++);
 
-  const active = expedientes.filter((e) => e.status !== "completed");
+  const pendingCount = counts[ExpedienteStatus.Registrado] + counts[ExpedienteStatus.Manifestado] + counts[ExpedienteStatus.PendienteInfo] + counts[ExpedienteStatus.PreLiquidado];
+  const inProgressCount = counts[ExpedienteStatus.Presentado] + counts[ExpedienteStatus.ProcesoVerificacion] + counts[ExpedienteStatus.Verificado] + counts[ExpedienteStatus.Despacho];
+
+  const active = expedientes.filter((e) => e.status !== ExpedienteStatus.Completo);
 
   return (
     <Box>
@@ -71,23 +82,18 @@ export default function DashboardPage() {
           },
           {
             label: t("dashboard.pending"),
-            value: counts.pending,
+            value: pendingCount,
             color: "#94a3b8",
           },
           {
             label: t("dashboard.inProgress"),
-            value: counts["in-progress"],
+            value: inProgressCount,
             color: "#3b82f6",
           },
           {
             label: t("dashboard.completed"),
-            value: counts.completed,
+            value: counts[ExpedienteStatus.Completo],
             color: "#22c55e",
-          },
-          {
-            label: t("dashboard.alerts"),
-            value: counts.alert,
-            color: "#f43f5e",
           },
         ].map((card) => (
           <Grid size={{ xs: 6, md: 2.4 }} key={card.label}>

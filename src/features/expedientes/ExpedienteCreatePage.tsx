@@ -1,16 +1,18 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, MenuItem, Tab, Tabs,
-  TextField, Typography, Alert, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper,
+  Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, IconButton,
+  MenuItem, Tab, Tabs, TextField, Typography, Alert, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, Paper,
 } from '@mui/material';
-import { ArrowBack, Save, Add, Upload, FlightLand, FlightTakeoff } from '@mui/icons-material';
+import { ArrowBack, Save, Delete, Edit as EditIcon, Add, AddComment, SwapVert, Upload, FlightLand, FlightTakeoff } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { useExpedientesStore } from '../../store/expedientesStore';
+import { useAuthStore } from '../../store/authStore';
+import { ExpedienteStatus } from '../../types';
 import type {
-  ExpedienteStatus, TipoExpediente, Declaracion, EntidadAduanal, Suplidor,
+  TipoExpediente, Declaracion, EntidadAduanal, Suplidor,
   DocumentoFactura, Contenedor, Valores, RegimenAduanero, PesoMercancia, Partida, TipoCarga,
 } from '../../types';
 
@@ -53,6 +55,7 @@ export default function ExpedienteCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const currentUser = useAuthStore((s) => s.user);
   const create = useExpedientesStore((s) => s.create);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -64,8 +67,45 @@ export default function ExpedienteCreatePage() {
   /* General */
   const [tipoExpediente] = useState<TipoExpediente>(tipoFromUrl);
   const [reference, setReference] = useState('');
-  const [status, setStatus] = useState<ExpedienteStatus>('pending');
+  const [status, setStatus] = useState<ExpedienteStatus>(ExpedienteStatus.Registrado);
   const [notes, setNotes] = useState('');
+  const [newObs, setNewObs] = useState('');
+  const [obsOrder, setObsOrder] = useState<'asc' | 'desc'>('desc');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+
+  const observations = useMemo(() =>
+    notes.split('\n').filter(Boolean).map((line, idx) => {
+      const parts = line.split('|');
+      if (parts.length === 1) return { id: idx, date: null as Date | null, user: null as string | null, text: line };
+      if (parts.length === 2) return { id: idx, date: new Date(parts[0]), user: null as string | null, text: parts[1] };
+      return { id: idx, date: new Date(parts[0]), user: parts[1], text: parts.slice(2).join('|') };
+    }), [notes]);
+
+  const sortedObs = useMemo(() =>
+    obsOrder === 'desc' ? [...observations].reverse() : [...observations],
+    [observations, obsOrder]);
+
+  const handleAddObs = () => {
+    if (!newObs.trim()) return;
+    setNotes((prev) => [prev, `${new Date().toISOString()}|${currentUser?.name ?? 'Usuario'}|${newObs.trim()}`].filter(Boolean).join('\n'));
+    setNewObs('');
+  };
+
+  const handleDeleteObs = (id: number) => {
+    setNotes(notes.split('\n').filter(Boolean).filter((_, i) => i !== id).join('\n'));
+  };
+
+  const handleSaveEdit = (id: number) => {
+    const lines = notes.split('\n').filter(Boolean);
+    const parts = lines[id].split('|');
+    lines[id] = parts.length >= 3
+      ? `${parts[0]}|${parts[1]}|${editText.trim()}`
+      : editText.trim();
+    setNotes(lines.join('\n'));
+    setEditingId(null);
+    setEditText('');
+  };
 
   /* Declaración */
   const [declaracion, setDeclaracion] = useState<Declaracion>({
@@ -228,12 +268,11 @@ export default function ExpedienteCreatePage() {
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('expediente.reference')} value={reference} onChange={(e) => setReference(e.target.value)} helperText={t('detail.referenceHint')} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField select fullWidth label={t('expediente.status')} value={status} onChange={(e) => setStatus(e.target.value as ExpedienteStatus)}>
-                {(['pending', 'in-progress', 'completed', 'alert'] as ExpedienteStatus[]).map((s) => (
+                {Object.values(ExpedienteStatus).map((s) => (
                   <MenuItem key={s} value={s}>{t(`status.${s}`)}</MenuItem>
                 ))}
               </TextField>
             </Grid>
-            <Grid size={12}><TextField fullWidth multiline rows={3} label={t('expediente.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} /></Grid>
           </Grid>
         </CardContent></Card>
       )}
@@ -455,6 +494,87 @@ export default function ExpedienteCreatePage() {
           </Box>
         </CardContent></Card>
       )}
+
+      {/* OBSERVATIONS TIMELINE */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">{t('expediente.observations')}</Typography>
+            <IconButton size="small" onClick={() => setObsOrder((o) => o === 'asc' ? 'desc' : 'asc')} title={obsOrder === 'asc' ? 'Más reciente primero' : 'Más antiguo primero'}>
+              <SwapVert />
+            </IconButton>
+          </Box>
+
+          {sortedObs.length > 0 ? (
+            <Box sx={{ position: 'relative', pl: 4, mb: 3 }}>
+              <Box sx={{ position: 'absolute', left: 11, top: 6, bottom: 6, width: 2, bgcolor: 'divider' }} />
+              {sortedObs.map((obs) => (
+                <Box key={obs.id} sx={{ position: 'relative', mb: 3 }}>
+                  <Box sx={{
+                    position: 'absolute', left: -30, top: 4,
+                    width: 10, height: 10, borderRadius: '50%',
+                    bgcolor: 'primary.main', border: '2px solid', borderColor: 'background.paper',
+                  }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                        {obs.date ? obs.date.toLocaleString() : ''}{obs.user ? ` · ${obs.user}` : ''}
+                      </Typography>
+                      {editingId === obs.id ? (
+                        <Box>
+                          <TextField fullWidth size="small" multiline rows={2} value={editText} onChange={(e) => setEditText(e.target.value)} autoFocus />
+                          <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                            <Button size="small" variant="contained" disabled={!editText.trim()} onClick={() => handleSaveEdit(obs.id)}>{t('expediente.save')}</Button>
+                            <Button size="small" onClick={() => setEditingId(null)}>{t('common.cancel')}</Button>
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2">{obs.text}</Typography>
+                      )}
+                    </Box>
+                    {editingId !== obs.id && (
+                      <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                        <IconButton size="small" onClick={() => { setEditingId(obs.id); setEditText(obs.text); }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteObs(obs.id)}>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('expediente.noObservations')}
+            </Typography>
+          )}
+
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <TextField
+              fullWidth
+              size="small"
+              multiline
+              rows={2}
+              placeholder={t('expediente.newObservation')}
+              value={newObs}
+              onChange={(e) => setNewObs(e.target.value)}
+            />
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddComment />}
+              disabled={!newObs.trim()}
+              onClick={handleAddObs}
+              sx={{ mt: 0.5, whiteSpace: 'nowrap' }}
+            >
+              {t('expediente.addObservations')}
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
 
       {/* ACTION BUTTONS — always visible */}
       <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>

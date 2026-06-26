@@ -8,6 +8,7 @@ import { Upload, Download } from '@mui/icons-material';
 import { DataGrid, type GridColDef, type GridRowSelectionModel } from '@mui/x-data-grid';
 import * as XLSX from 'xlsx';
 import { useExpedientesStore, computeProgress } from '../../store/expedientesStore';
+import { ExpedienteStatus } from '../../types';
 import type { Expediente } from '../../types';
 
 /* ---------- parsed row from XLSX ---------- */
@@ -124,7 +125,7 @@ export default function ImportExportPage() {
       return {
         reference: ref,
         tipoExpediente: 'importacion' as const,
-        status: 'pending' as const,
+        status: ExpedienteStatus.Registrado,
         checklist: DEFAULT_CHECKLIST.map((label) => ({ id: crypto.randomUUID(), label, completed: false, completedAt: null })),
         declaracion: {
           idSecuencia: '', eta: '', tipoDespacho: '',

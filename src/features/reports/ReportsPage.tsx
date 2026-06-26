@@ -6,10 +6,16 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useExpedientesStore, computeProgress } from '../../store/expedientesStore';
-import type { ExpedienteStatus } from '../../types';
+import { ExpedienteStatus } from '../../types';
 
-const COLORS = ['#9e9e9e', '#1976d2', '#2e7d32', '#ed6c02'];
-const STATUS_ORDER: ExpedienteStatus[] = ['pending', 'in-progress', 'completed', 'alert'];
+const COLORS = ['#bdbdbd', '#ef9a9a', '#ffe082', '#ffcc80', '#c5e1a5', '#a5d6a7', '#80cbc4', '#26a69a', '#2e7d32'];
+const STATUS_ORDER: ExpedienteStatus[] = [
+  ExpedienteStatus.Registrado, ExpedienteStatus.Manifestado,
+  ExpedienteStatus.PendienteInfo, ExpedienteStatus.PreLiquidado,
+  ExpedienteStatus.Presentado, ExpedienteStatus.ProcesoVerificacion,
+  ExpedienteStatus.Verificado, ExpedienteStatus.Despacho,
+  ExpedienteStatus.Completo,
+];
 
 export default function ReportsPage() {
   const { t } = useTranslation();

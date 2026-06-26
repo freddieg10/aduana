@@ -101,7 +101,17 @@ export interface Partida {
 
 // --- Main Expediente ---
 
-export type ExpedienteStatus = 'pending' | 'in-progress' | 'completed' | 'alert';
+export enum ExpedienteStatus {
+  Registrado          = 'registrado',
+  Manifestado         = 'manifestado',
+  PendienteInfo       = 'pendiente_info',
+  PreLiquidado        = 'pre_liquidado',
+  Presentado          = 'presentado',
+  ProcesoVerificacion = 'proceso_verificacion',
+  Verificado          = 'verificado',
+  Despacho            = 'despacho',
+  Completo            = 'completo',
+}
 
 export type TipoExpediente = 'importacion' | 'exportacion';
 

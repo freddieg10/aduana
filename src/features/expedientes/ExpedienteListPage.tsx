@@ -21,25 +21,33 @@ import {
   Add,
   Delete,
   Edit,
+  FileDownload,
   FlightLand,
   FlightTakeoff,
 } from "@mui/icons-material";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import { DataGrid, useGridApiRef, type GridColDef } from "@mui/x-data-grid";
 import {
   useExpedientesStore,
   computeProgress,
 } from "../../store/expedientesStore";
-import type { ExpedienteStatus, TipoExpediente } from "../../types";
+import { ExpedienteStatus } from "../../types";
+import type { TipoExpediente } from "../../types";
 
-const STATUS_COLORS: Record<
-  ExpedienteStatus,
-  "default" | "primary" | "success" | "warning"
-> = {
-  pending: "default",
-  "in-progress": "primary",
-  completed: "success",
-  alert: "warning",
+const STATUS_CHIP: Record<ExpedienteStatus, { bg: string; clr: string }> = {
+  [ExpedienteStatus.Registrado]:          { bg: '#FDDBD4', clr: '#8B3020' },
+  [ExpedienteStatus.Manifestado]:         { bg: '#FAC8BC', clr: '#8B3020' },
+  [ExpedienteStatus.PendienteInfo]:       { bg: '#FFF3C4', clr: '#7A5400' },
+  [ExpedienteStatus.PreLiquidado]:        { bg: '#FFE680', clr: '#7A5400' },
+  [ExpedienteStatus.Presentado]:          { bg: '#E0F4C8', clr: '#205000' },
+  [ExpedienteStatus.ProcesoVerificacion]: { bg: '#C4E8A0', clr: '#205000' },
+  [ExpedienteStatus.Verificado]:          { bg: '#A0D478', clr: '#205000' },
+  [ExpedienteStatus.Despacho]:            { bg: '#4DB87A', clr: '#00280A' },
+  [ExpedienteStatus.Completo]:            { bg: '#1A5C38', clr: '#ffffff' },
 };
+
+const DIGITADORES = ["Ana García", "Luis Pérez", "María López", "Carlos Ruiz"];
+const GESTORES = ["Pedro Martínez", "Sofía Castro", "Juan Torres", "Elena Vega"];
+const strHash = (s: string) => s.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
 
 export default function ExpedienteListPage() {
   const { t } = useTranslation();
@@ -56,6 +64,7 @@ export default function ExpedienteListPage() {
   /* Dialogs */
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
+  const apiRef = useGridApiRef();
 
   const filtered = useMemo(() => {
     return expedientes.filter((e) => {
@@ -87,12 +96,38 @@ export default function ExpedienteListPage() {
     });
   }, [expedientes, refFilter, clientFilter, statusFilter, tipoFilter, t]);
 
+  const ADVANCED_STATUSES = new Set([
+    ExpedienteStatus.Presentado,
+    ExpedienteStatus.ProcesoVerificacion,
+    ExpedienteStatus.Verificado,
+    ExpedienteStatus.Despacho,
+    ExpedienteStatus.Completo,
+  ]);
+
+  const getRowClassName = (params: { row: { declaracion?: { eta?: string }; status: ExpedienteStatus } }) => {
+    const eta = params.row.declaracion?.eta;
+    if (!eta || ADVANCED_STATUSES.has(params.row.status)) return "";
+    const msUntil = new Date(eta).getTime() - Date.now();
+    const daysUntil = msUntil / (1000 * 60 * 60 * 24);
+    if (daysUntil < 0) return "row-overdue";
+    if (daysUntil <= 7) return "row-warning";
+    return "";
+  };
+
   const handleSelectType = (tipo: TipoExpediente) => {
     setTypeDialogOpen(false);
     navigate(`/expedientes/new?tipo=${tipo}`);
   };
 
   const columns: GridColDef[] = [
+    {
+      field: "fechaLlegada",
+      headerName: t("expediente.fechaLlegada"),
+      width: 150,
+      valueGetter: (_value, row) => row.declaracion?.eta ?? "",
+      valueFormatter: (value: string) =>
+        value ? new Date(value).toLocaleDateString() : "—",
+    },
     {
       field: "reference",
       headerName: t("expediente.reference"),
@@ -130,13 +165,16 @@ export default function ExpedienteListPage() {
       field: "status",
       headerName: t("expediente.status"),
       width: 140,
-      renderCell: (params) => (
-        <Chip
-          label={t(`status.${params.value}`)}
-          size="small"
-          color={STATUS_COLORS[params.value as ExpedienteStatus]}
-        />
-      ),
+      renderCell: (params) => {
+        const s = STATUS_CHIP[params.value as ExpedienteStatus];
+        return (
+          <Chip
+            label={t(`status.${params.value}`)}
+            size="small"
+            sx={{ bgcolor: s?.bg, color: s?.clr, fontWeight: 600 }}
+          />
+        );
+      },
     },
     {
       field: "progress",
@@ -145,7 +183,7 @@ export default function ExpedienteListPage() {
       valueGetter: (_value, row) => computeProgress(row.checklist),
       renderCell: (params) => (
         <Box
-          sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}
+          sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%", height: "100%" }}
         >
           <LinearProgress
             variant="determinate"
@@ -157,23 +195,48 @@ export default function ExpedienteListPage() {
       ),
     },
     {
+      field: "digitador",
+      headerName: t("expediente.digitador"),
+      width: 150,
+      sortable: false,
+      valueGetter: (_value, row) =>
+        DIGITADORES[strHash(row.id) % DIGITADORES.length],
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" variant="outlined" />
+      ),
+    },
+    {
+      field: "gestor",
+      headerName: t("expediente.gestor"),
+      width: 150,
+      sortable: false,
+      valueGetter: (_value, row) =>
+        GESTORES[strHash(row.id) % GESTORES.length],
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" variant="outlined" color="secondary" />
+      ),
+    },
+    {
       field: "createdAt",
       headerName: t("expediente.createdAt"),
-      width: 130,
+      width: 165,
       valueFormatter: (value: string) => new Date(value).toLocaleDateString(),
     },
     {
       field: "actions",
       headerName: t("common.actions"),
-      width: 120,
+      width: 90,
       sortable: false,
       filterable: false,
+      headerAlign: "center",
+      align: "center",
       renderCell: (params) => (
-        <Box>
+        <Box sx={{ display: "flex", width: "100%", justifyContent: "center" }}>
           <Button
             size="small"
             onClick={() => navigate(`/expedientes/${params.row.id}`)}
             title={t("expediente.edit")}
+            sx={{ minWidth: 0, p: 0.5 }}
           >
             <Edit fontSize="small" />
           </Button>
@@ -182,6 +245,7 @@ export default function ExpedienteListPage() {
             color="error"
             onClick={() => setDeleteId(params.row.id)}
             title={t("expediente.delete")}
+            sx={{ minWidth: 0, p: 0.5 }}
           >
             <Delete fontSize="small" />
           </Button>
@@ -224,7 +288,6 @@ export default function ExpedienteListPage() {
           alignItems: "center",
           p: 2,
           bgcolor: "background.paper",
-          borderRadius: 3,
           boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
         }}
       >
@@ -240,6 +303,15 @@ export default function ExpedienteListPage() {
         >
           Filter List
         </Typography>
+        <Box sx={{ flex: 1 }} />
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<FileDownload />}
+          onClick={() => apiRef.current?.exportDataAsCsv({ fileName: "expedientes" })}
+        >
+          Export CSV
+        </Button>
         <TextField
           size="small"
           placeholder={t("expediente.reference")}
@@ -285,7 +357,6 @@ export default function ExpedienteListPage() {
       <Box
         sx={{
           bgcolor: "background.paper",
-          borderRadius: 4,
           overflow: "hidden",
           boxShadow:
             "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
@@ -297,7 +368,9 @@ export default function ExpedienteListPage() {
           autoHeight
           pageSizeOptions={[10, 25, 50]}
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+          apiRef={apiRef}
           disableRowSelectionOnClick
+          getRowClassName={getRowClassName}
           sx={{
             border: "none",
             "& .MuiDataGrid-columnHeaders": {
@@ -319,6 +392,10 @@ export default function ExpedienteListPage() {
             "& .MuiDataGrid-row:hover": {
               backgroundColor: "background.default",
             },
+            "& .row-overdue": { backgroundColor: "rgba(249, 115, 22, 0.18)" },
+            "& .row-overdue:hover": { backgroundColor: "rgba(249, 115, 22, 0.28)" },
+            "& .row-warning": { backgroundColor: "rgba(234, 179, 8, 0.15)" },
+            "& .row-warning:hover": { backgroundColor: "rgba(234, 179, 8, 0.25)" },
           }}
         />
       </Box>
