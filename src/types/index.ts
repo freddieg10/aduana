@@ -101,17 +101,19 @@ export interface Partida {
 
 // --- Main Expediente ---
 
-export enum ExpedienteStatus {
-  Registrado          = 'registrado',
-  Manifestado         = 'manifestado',
-  PendienteInfo       = 'pendiente_info',
-  PreLiquidado        = 'pre_liquidado',
-  Presentado          = 'presentado',
-  ProcesoVerificacion = 'proceso_verificacion',
-  Verificado          = 'verificado',
-  Despacho            = 'despacho',
-  Completo            = 'completo',
-}
+export const ExpedienteStatus = {
+  Registrado:          'registrado',
+  Manifestado:         'manifestado',
+  PendienteInfo:       'pendiente_info',
+  PreLiquidado:        'pre_liquidado',
+  Presentado:          'presentado',
+  ProcesoVerificacion: 'proceso_verificacion',
+  Verificado:          'verificado',
+  Despacho:            'despacho',
+  Completo:            'completo',
+} as const;
+
+export type ExpedienteStatus = typeof ExpedienteStatus[keyof typeof ExpedienteStatus];
 
 export type TipoExpediente = 'importacion' | 'exportacion';
 

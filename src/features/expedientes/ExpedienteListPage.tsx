@@ -25,7 +25,7 @@ import {
   FlightLand,
   FlightTakeoff,
 } from "@mui/icons-material";
-import { DataGrid, useGridApiRef, type GridColDef } from "@mui/x-data-grid";
+import { DataGrid, useGridApiRef, type GridColDef, type GridRowClassNameParams } from "@mui/x-data-grid";
 import {
   useExpedientesStore,
   computeProgress,
@@ -96,7 +96,7 @@ export default function ExpedienteListPage() {
     });
   }, [expedientes, refFilter, clientFilter, statusFilter, tipoFilter, t]);
 
-  const ADVANCED_STATUSES = new Set([
+  const ADVANCED_STATUSES = new Set<ExpedienteStatus>([
     ExpedienteStatus.Presentado,
     ExpedienteStatus.ProcesoVerificacion,
     ExpedienteStatus.Verificado,
@@ -104,7 +104,7 @@ export default function ExpedienteListPage() {
     ExpedienteStatus.Completo,
   ]);
 
-  const getRowClassName = (params: { row: { declaracion?: { eta?: string }; status: ExpedienteStatus } }) => {
+  const getRowClassName = (params: GridRowClassNameParams) => {
     const eta = params.row.declaracion?.eta;
     if (!eta || ADVANCED_STATUSES.has(params.row.status)) return "";
     const msUntil = new Date(eta).getTime() - Date.now();
@@ -254,6 +254,8 @@ export default function ExpedienteListPage() {
     },
   ];
 
+
+
   return (
     <Box>
       <Box
@@ -301,7 +303,7 @@ export default function ExpedienteListPage() {
             letterSpacing: "0.05em",
           }}
         >
-          Filter List
+          {t("common.filterList")}
         </Typography>
         <Box sx={{ flex: 1 }} />
         <Button
@@ -310,7 +312,7 @@ export default function ExpedienteListPage() {
           startIcon={<FileDownload />}
           onClick={() => apiRef.current?.exportDataAsCsv({ fileName: "expedientes" })}
         >
-          Export CSV
+          {t("common.exportCsv")}
         </Button>
         <TextField
           size="small"

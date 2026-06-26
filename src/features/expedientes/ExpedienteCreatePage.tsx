@@ -500,7 +500,7 @@ export default function ExpedienteCreatePage() {
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">{t('expediente.observations')}</Typography>
-            <IconButton size="small" onClick={() => setObsOrder((o) => o === 'asc' ? 'desc' : 'asc')} title={obsOrder === 'asc' ? 'Más reciente primero' : 'Más antiguo primero'}>
+            <IconButton size="small" onClick={() => setObsOrder((o) => o === 'asc' ? 'desc' : 'asc')} title={obsOrder === 'asc' ? t('common.recentFirst') : t('common.oldestFirst')}>
               <SwapVert />
             </IconButton>
           </Box>

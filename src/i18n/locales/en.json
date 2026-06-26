@@ -214,6 +214,10 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
-    "all": "All"
+    "all": "All",
+    "filterList": "Filter list",
+    "exportCsv": "Export CSV",
+    "recentFirst": "Most recent first",
+    "oldestFirst": "Oldest first"
   }
 }
