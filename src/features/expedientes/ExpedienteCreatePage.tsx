@@ -6,9 +6,10 @@ import {
   MenuItem, Tab, Tabs, TextField, Typography, Alert, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper,
 } from '@mui/material';
-import { ArrowBack, Save, Delete, Edit as EditIcon, Add, AddComment, SwapVert, Upload, FlightLand, FlightTakeoff } from '@mui/icons-material';
+import { ArrowBack, Save, Delete, Edit as EditIcon, Add, AddComment, ContentCopy, SwapVert, Upload, FlightLand, FlightTakeoff } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { useExpedientesStore } from '../../store/expedientesStore';
+import { fmtDateTime } from '../../utils/date';
 import { useAuthStore } from '../../store/authStore';
 import { ExpedienteStatus } from '../../types';
 import type {
@@ -153,6 +154,7 @@ export default function ExpedienteCreatePage() {
   const addDocumento = () => setDocumentos([...documentos, { id: crypto.randomUUID(), numeroFactura: '', fechaFactura: '', codigoSuplidor: '', valorFactura: 0 }]);
   const addContenedor = () => setContenedores([...contenedores, { id: crypto.randomUUID(), tipo: '', numero: '', sello1: '', sello2: '' }]);
   const addPartida = () => setPartidas([...partidas, { id: crypto.randomUUID(), codigoPartida: '', descripcion: '', organico: false, cantidad: 0, unidad: 'KILOGRAMOS', paisOrigen: '', valorFob: 0, unitario: 0, facturaDva: '' }]);
+  const clonePartida = (idx: number) => { const next = [...partidas]; next.splice(idx + 1, 0, { ...partidas[idx], id: crypto.randomUUID() }); setPartidas(next); };
   const removePartida = (idx: number) => setPartidas(partidas.filter((_, i) => i !== idx));
 
   /* Import partidas from Excel */
@@ -265,7 +267,7 @@ export default function ExpedienteCreatePage() {
           <Divider sx={{ my: 3 }} />
           <SectionTitle>{t('detail.generalInfo')}</SectionTitle>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('expediente.reference')} value={reference} onChange={(e) => setReference(e.target.value)} helperText={t('detail.referenceHint')} /></Grid>
+            <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={3} label={t('expediente.descripcion')} value={reference} onChange={(e) => setReference(e.target.value)} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField select fullWidth label={t('expediente.status')} value={status} onChange={(e) => setStatus(e.target.value as ExpedienteStatus)}>
                 {Object.values(ExpedienteStatus).map((s) => (
@@ -437,11 +439,11 @@ export default function ExpedienteCreatePage() {
       {tab === 4 && (
         <Card><CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <SectionTitle>{t('detail.partidas')} ({partidas.length})</SectionTitle>
+            <SectionTitle>{t('detail.renglones')} ({partidas.length})</SectionTitle>
             <Box sx={{ flexGrow: 1 }} />
             <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={handleImportPartidas} />
             <Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => fileRef.current?.click()}>
-              {t('detail.importPartidasXlsx')}
+              {t('detail.importRenglonesXlsx')}
             </Button>
           </Box>
           {importError && <Alert severity="error" sx={{ mb: 2 }}>{importError}</Alert>}
@@ -478,7 +480,10 @@ export default function ExpedienteCreatePage() {
                     <TableCell align="right"><TextField size="small" variant="standard" type="number" value={p.unitario} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], unitario: Number(e.target.value) }; setPartidas(c); }} sx={{ width: 80 }} /></TableCell>
                     <TableCell><TextField size="small" variant="standard" value={p.facturaDva} onChange={(e) => { const c = [...partidas]; c[i] = { ...c[i], facturaDva: e.target.value }; setPartidas(c); }} sx={{ width: 90 }} /></TableCell>
                     <TableCell>
-                      <Button size="small" color="error" onClick={() => removePartida(i)} sx={{ minWidth: 0, p: 0.5 }}>✕</Button>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Button size="small" onClick={() => clonePartida(i)} title={t('detail.cloneRenglon')} sx={{ minWidth: 0, p: 0.5 }}><ContentCopy fontSize="small" /></Button>
+                        <Button size="small" color="error" onClick={() => removePartida(i)} sx={{ minWidth: 0, p: 0.5 }}>✕</Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -486,7 +491,7 @@ export default function ExpedienteCreatePage() {
             </Table>
           </TableContainer>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button size="small" startIcon={<Add />} onClick={addPartida}>{t('detail.addPartida')}</Button>
+            <Button size="small" startIcon={<Add />} onClick={addPartida}>{t('detail.addRenglon')}</Button>
             <Box sx={{ flexGrow: 1 }} />
             <Typography variant="body1" sx={{ fontWeight: 600 }}>
               FOB Total: ${partidas.reduce((s, p) => s + p.valorFob, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -518,7 +523,7 @@ export default function ExpedienteCreatePage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                        {obs.date ? obs.date.toLocaleString() : ''}{obs.user ? ` · ${obs.user}` : ''}
+                        {obs.date ? fmtDateTime(obs.date) : ''}{obs.user ? ` · ${obs.user}` : ''}
                       </Typography>
                       {editingId === obs.id ? (
                         <Box>

@@ -6,6 +6,7 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useExpedientesStore, computeProgress } from '../../store/expedientesStore';
+import { fmtDate } from '../../utils/date';
 import { ExpedienteStatus } from '../../types';
 
 const COLORS = ['#bdbdbd', '#ef9a9a', '#ffe082', '#ffcc80', '#c5e1a5', '#a5d6a7', '#80cbc4', '#26a69a', '#2e7d32'];
@@ -77,13 +78,13 @@ export default function ReportsPage() {
       valueGetter: (_value, row) => row.valores.valorCifTotal,
       valueFormatter: (value: number) => `$${value.toLocaleString()}`,
     },
-    { field: 'createdAt', headerName: t('expediente.createdAt'), width: 130, valueFormatter: (value: string) => new Date(value).toLocaleDateString() },
+    { field: 'createdAt', headerName: t('expediente.createdAt'), width: 130, valueFormatter: (value: string) => fmtDate(value) },
   ];
 
   const handleExportCsv = () => {
     const header = ['Referencia,Importador,Estado,Progreso,Valor CIF,Fecha'];
     const rows = filtered.map((e) =>
-      `${e.reference},${e.importador.nombre},${e.status},${computeProgress(e.checklist)}%,$${e.valores.valorCifTotal},${new Date(e.createdAt).toLocaleDateString()}`,
+      `${e.reference},${e.importador.nombre},${e.status},${computeProgress(e.checklist)}%,$${e.valores.valorCifTotal},${fmtDate(e.createdAt)}`,
     );
     const csv = [...header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

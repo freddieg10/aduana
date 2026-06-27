@@ -25,6 +25,7 @@ import {
 import { useNotificationStore } from "../../store/notificationStore";
 import { useNavigate } from "react-router";
 import { ExpedienteStatus } from "../../types";
+import { fmtDateTime } from "../../utils/date";
 
 const STATUS_CONFIG: Record<
   ExpedienteStatus,
@@ -222,7 +223,7 @@ export default function DashboardPage() {
                         secondary={
                           <>
                             {exp && <>{exp.importador.nombre} — </>}
-                            {new Date(n.createdAt).toLocaleString()}
+                            {fmtDateTime(n.createdAt)}
                           </>
                         }
                       />

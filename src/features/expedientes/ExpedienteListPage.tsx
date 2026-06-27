@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Chip,
+  IconButton,
   LinearProgress,
   TextField,
   Typography,
@@ -19,19 +20,24 @@ import {
 } from "@mui/material";
 import {
   Add,
+  AddComment,
+  Comment,
   Delete,
   Edit,
   FileDownload,
   FlightLand,
   FlightTakeoff,
+  SwapVert,
 } from "@mui/icons-material";
 import { DataGrid, useGridApiRef, type GridColDef, type GridRowClassNameParams } from "@mui/x-data-grid";
 import {
   useExpedientesStore,
   computeProgress,
 } from "../../store/expedientesStore";
+import { useAuthStore } from "../../store/authStore";
 import { ExpedienteStatus } from "../../types";
 import type { TipoExpediente } from "../../types";
+import { fmtDate, fmtDateTime } from "../../utils/date";
 
 const STATUS_CHIP: Record<ExpedienteStatus, { bg: string; clr: string }> = {
   [ExpedienteStatus.Registrado]:          { bg: '#FDDBD4', clr: '#8B3020' },
@@ -54,6 +60,8 @@ export default function ExpedienteListPage() {
   const navigate = useNavigate();
   const expedientes = useExpedientesStore((s) => s.expedientes);
   const remove = useExpedientesStore((s) => s.remove);
+  const update = useExpedientesStore((s) => s.update);
+  const currentUser = useAuthStore((s) => s.user);
 
   /* Column-level filters */
   const [refFilter, setRefFilter] = useState("");
@@ -65,6 +73,65 @@ export default function ExpedienteListPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const apiRef = useGridApiRef();
+
+  /* Observations dialog */
+  const [obsRowId, setObsRowId] = useState<string | null>(null);
+  const [obsNotes, setObsNotes] = useState('');
+  const [obsOrder, setObsOrder] = useState<'asc' | 'desc'>('desc');
+  const [obsNewText, setObsNewText] = useState('');
+  const [obsEditingId, setObsEditingId] = useState<number | null>(null);
+  const [obsEditText, setObsEditText] = useState('');
+
+  const obsExpediente = useMemo(() => expedientes.find((e) => e.id === obsRowId), [expedientes, obsRowId]);
+
+  const obsItems = useMemo(() =>
+    obsNotes.split('\n').filter(Boolean).map((line, idx) => {
+      const parts = line.split('|');
+      if (parts.length === 1) return { id: idx, date: null as Date | null, user: null as string | null, text: line };
+      if (parts.length === 2) return { id: idx, date: new Date(parts[0]), user: null as string | null, text: parts[1] };
+      return { id: idx, date: new Date(parts[0]), user: parts[1], text: parts.slice(2).join('|') };
+    }), [obsNotes]);
+
+  const sortedObsItems = useMemo(() =>
+    obsOrder === 'desc' ? [...obsItems].reverse() : [...obsItems],
+    [obsItems, obsOrder]);
+
+  const persistObs = (notes: string) => {
+    setObsNotes(notes);
+    if (obsRowId) update(obsRowId, { notes });
+  };
+
+  const handleOpenObs = (id: string) => {
+    const exp = expedientes.find((e) => e.id === id);
+    setObsRowId(id);
+    setObsNotes(exp?.notes ?? '');
+    setObsOrder('desc');
+    setObsNewText('');
+    setObsEditingId(null);
+    setObsEditText('');
+  };
+
+  const handleAddObs = () => {
+    if (!obsNewText.trim()) return;
+    const line = `${new Date().toISOString()}|${currentUser?.name ?? 'Usuario'}|${obsNewText.trim()}`;
+    persistObs([obsNotes, line].filter(Boolean).join('\n'));
+    setObsNewText('');
+  };
+
+  const handleDeleteObs = (id: number) => {
+    persistObs(obsNotes.split('\n').filter(Boolean).filter((_, i) => i !== id).join('\n'));
+  };
+
+  const handleSaveObsEdit = (id: number) => {
+    const lines = obsNotes.split('\n').filter(Boolean);
+    const parts = lines[id].split('|');
+    lines[id] = parts.length >= 3
+      ? `${parts[0]}|${parts[1]}|${obsEditText.trim()}`
+      : obsEditText.trim();
+    persistObs(lines.join('\n'));
+    setObsEditingId(null);
+    setObsEditText('');
+  };
 
   const filtered = useMemo(() => {
     return expedientes.filter((e) => {
@@ -125,12 +192,17 @@ export default function ExpedienteListPage() {
       headerName: t("expediente.fechaLlegada"),
       width: 150,
       valueGetter: (_value, row) => row.declaracion?.eta ?? "",
-      valueFormatter: (value: string) =>
-        value ? new Date(value).toLocaleDateString() : "—",
+      valueFormatter: (value: string) => fmtDate(value) || "—",
+    },
+    {
+      field: "docEmbarque",
+      headerName: t("detail.docEmbarque"),
+      width: 180,
+      valueGetter: (_value: unknown, row: { declaracion?: { docEmbarque?: string } }) => row.declaracion?.docEmbarque ?? "—",
     },
     {
       field: "reference",
-      headerName: t("expediente.reference"),
+      headerName: t("expediente.descripcion"),
       flex: 1,
       minWidth: 160,
     },
@@ -220,18 +292,18 @@ export default function ExpedienteListPage() {
       field: "createdAt",
       headerName: t("expediente.createdAt"),
       width: 165,
-      valueFormatter: (value: string) => new Date(value).toLocaleDateString(),
+      valueFormatter: (value: string) => fmtDate(value),
     },
     {
       field: "actions",
       headerName: t("common.actions"),
-      width: 90,
+      width: 115,
       sortable: false,
       filterable: false,
       headerAlign: "center",
       align: "center",
       renderCell: (params) => (
-        <Box sx={{ display: "flex", width: "100%", justifyContent: "center" }}>
+        <Box sx={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}>
           <Button
             size="small"
             onClick={() => navigate(`/expedientes/${params.row.id}`)}
@@ -239,6 +311,15 @@ export default function ExpedienteListPage() {
             sx={{ minWidth: 0, p: 0.5 }}
           >
             <Edit fontSize="small" />
+          </Button>
+          <Button
+            size="small"
+            color="primary"
+            onClick={() => handleOpenObs(params.row.id)}
+            title={t("expediente.observations")}
+            sx={{ minWidth: 0, p: 0.5 }}
+          >
+            <Comment fontSize="small" />
           </Button>
           <Button
             size="small"
@@ -436,6 +517,104 @@ export default function ExpedienteListPage() {
           <Button onClick={() => setTypeDialogOpen(false)}>
             {t("common.cancel")}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Observations dialog */}
+      <Dialog
+        open={Boolean(obsRowId)}
+        onClose={() => setObsRowId(null)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ paper: { sx: { height: '80vh', display: 'flex', flexDirection: 'column' } } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box>
+            <Typography variant="h6">{t('expediente.observations')}</Typography>
+            {obsExpediente && (
+              <Typography variant="caption" color="text.secondary">{obsExpediente.reference}</Typography>
+            )}
+          </Box>
+          <IconButton
+            size="small"
+            onClick={() => setObsOrder((o) => o === 'asc' ? 'desc' : 'asc')}
+            title={obsOrder === 'asc' ? t('common.recentFirst') : t('common.oldestFirst')}
+          >
+            <SwapVert />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ flex: 1, overflowY: 'auto' }}>
+          {sortedObsItems.length > 0 ? (
+            <Box sx={{ position: 'relative', pl: 4 }}>
+              <Box sx={{ position: 'absolute', left: 11, top: 6, bottom: 6, width: 2, bgcolor: 'divider' }} />
+              {sortedObsItems.map((obs) => (
+                <Box key={obs.id} sx={{ position: 'relative', mb: 3 }}>
+                  <Box sx={{
+                    position: 'absolute', left: -30, top: 4,
+                    width: 10, height: 10, borderRadius: '50%',
+                    bgcolor: 'primary.main', border: '2px solid', borderColor: 'background.paper',
+                  }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                        {obs.date ? fmtDateTime(obs.date) : ''}{obs.user ? ` · ${obs.user}` : ''}
+                      </Typography>
+                      {obsEditingId === obs.id ? (
+                        <Box>
+                          <TextField
+                            fullWidth size="small" multiline rows={2}
+                            value={obsEditText} onChange={(e) => setObsEditText(e.target.value)} autoFocus
+                          />
+                          <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                            <Button size="small" variant="contained" disabled={!obsEditText.trim()} onClick={() => handleSaveObsEdit(obs.id)}>
+                              {t('expediente.save')}
+                            </Button>
+                            <Button size="small" onClick={() => setObsEditingId(null)}>{t('common.cancel')}</Button>
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2">{obs.text}</Typography>
+                      )}
+                    </Box>
+                    {obsEditingId !== obs.id && (
+                      <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                        <IconButton size="small" onClick={() => { setObsEditingId(obs.id); setObsEditText(obs.text); }}>
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteObs(obs.id)}>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">{t('expediente.noObservations')}</Typography>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, p: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <TextField
+              fullWidth size="small" multiline rows={2}
+              placeholder={t('expediente.newObservation')}
+              value={obsNewText}
+              onChange={(e) => setObsNewText(e.target.value)}
+            />
+            <Button
+              variant="contained" size="small" startIcon={<AddComment />}
+              disabled={!obsNewText.trim()} onClick={handleAddObs}
+              sx={{ mt: 0.5, whiteSpace: 'nowrap' }}
+            >
+              {t('expediente.addObservations')}
+            </Button>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button onClick={() => setObsRowId(null)}>{t('common.close')}</Button>
+          </Box>
         </DialogActions>
       </Dialog>
 
