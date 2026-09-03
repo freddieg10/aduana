@@ -2,10 +2,18 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Button, Card, CardContent, TextField, Typography, Alert,
+  Box, Button, Card, CardContent, Divider, TextField, Typography, Alert,
   ToggleButtonGroup, ToggleButton,
 } from '@mui/material';
-import { useAuthStore } from '../../store/authStore';
+import { AdminPanelSettings, SupportAgent, Storefront } from '@mui/icons-material';
+import { useAuthStore, homeForRole, DEMO_ACCOUNTS } from '../../store/authStore';
+import type { UserRole } from '../../types';
+
+const ROLE_ICON: Record<UserRole, React.ReactNode> = {
+  admin: <AdminPanelSettings />,
+  agent: <SupportAgent />,
+  client: <Storefront />,
+};
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
@@ -16,19 +24,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
 
+  const doLogin = (em: string, pw: string) => {
+    const ok = login(em, pw);
+    if (!ok) { setError(true); return; }
+    const user = useAuthStore.getState().user;
+    navigate(user ? homeForRole(user.role) : '/dashboard');
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const ok = login(email, password);
-    if (ok) {
-      navigate('/dashboard');
-    } else {
-      setError(true);
-    }
+    doLogin(email, password);
   };
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
-      <Card sx={{ width: 400, mx: 2 }}>
+      <Card sx={{ width: 420, mx: 2 }}>
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>Aduana</Typography>
@@ -58,9 +68,25 @@ export default function LoginPage() {
             </Button>
           </Box>
 
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3 }}>
-            Demo: admin@aduana.com / admin123
-          </Typography>
+          <Divider sx={{ my: 3 }}>
+            <Typography variant="caption" color="text.secondary">{t('auth.quickLogin')}</Typography>
+          </Divider>
+
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {DEMO_ACCOUNTS.map((acc) => (
+              <Button
+                key={acc.email}
+                fullWidth
+                variant="outlined"
+                size="small"
+                startIcon={ROLE_ICON[acc.role]}
+                onClick={() => doLogin(acc.email, acc.password)}
+                data-testid={`demo-login-${acc.role}`}
+              >
+                {t(`auth.role_${acc.role}`)}
+              </Button>
+            ))}
+          </Box>
         </CardContent>
       </Card>
     </Box>

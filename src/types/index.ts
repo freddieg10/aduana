@@ -5,6 +5,15 @@ export interface ChecklistItem {
   completedAt: string | null;
 }
 
+// --- Observaciones (timeline entries) ---
+
+export interface Observacion {
+  id: string;
+  fecha: string;   // ISO datetime
+  usuario: string;
+  texto: string;
+}
+
 // --- Declaración (Declaration header) ---
 
 export interface Declaracion {
@@ -24,9 +33,35 @@ export interface Declaracion {
 
 // --- Parties involved ---
 
+/** SIGA "Documento" types. Together with the number they identify a party. */
+export type TipoDocumento = 'CED' | 'PAS' | 'RNC' | 'TID';
+
+/** SIGA "Tipo" of a registered party. */
+export type TipoEntidad =
+  | 'Persona'
+  | 'Empresa Importadora'
+  | 'Empresa de Admisión Temporal'
+  | 'Empresa Industrial'
+  | 'Empresa Comercial'
+  | 'Empresa de Tiendas Z.F.'
+  | 'Organización Externa'
+  | 'Empresa de Especial a Z.F.'
+  | 'ExpressCompany'
+  | 'Empresa Compradora'
+  | 'Empresa Logística';
+
+/**
+ * A party on a declaration. `codigo` is the SIGA "Documento" number; `tipoDocumento` says
+ * which kind it is. SIGA composes its party codes as [RNC|PAS|TID][country][number] or
+ * [CED][number] — see `sigaPartyCode`. Both extra fields are optional because records
+ * created before they existed are treated as Dominican RNCs.
+ */
 export interface EntidadAduanal {
   codigo: string;
   nombre: string;
+  tipoDocumento?: TipoDocumento;
+  /** ISO 3166-1 numeric country that issued the document. */
+  paisDocumento?: string;
 }
 
 export interface Suplidor {
@@ -84,7 +119,7 @@ export interface PesoMercancia {
   pesoNetoKg: number;
 }
 
-// --- Partidas (Line items / tariff lines) ---
+// --- Partidas (Line items / tariff lines) — "Renglones" in the UI ---
 
 export interface Partida {
   id: string;
@@ -153,11 +188,59 @@ export interface Expediente {
   // Line items
   partidas: Partida[];
 
-  notes: string;
+  // Staff assignment
+  digitador: string;
+  gestor: string;
+
+  observaciones: Observacion[];
   assignedUserId: string;
   createdAt: string;
   updatedAt: string;
 }
+
+/** Everything the user edits in the create/detail form. */
+export type ExpedienteFormData = Omit<
+  Expediente,
+  'id' | 'createdAt' | 'updatedAt' | 'checklist' | 'observaciones' | 'assignedUserId'
+>;
+
+// --- Relacionados (master data) ---
+
+/**
+ * A client / importer, mirroring SIGA's "Buscar Información de Importador" form.
+ * The business key is the pair (`tipoDocumento`, `documento`) — see `clienteKey`. It is
+ * dynamic: the same company may be identified by RNC, a person by CED, a foreign party by
+ * PAS or TID. `id` is an internal row id only; never show it or match on it.
+ * Required in SIGA (marked with *): tipo, documento, nombre, país de origen.
+ */
+export interface Cliente {
+  id: string;
+  tipo: TipoEntidad;
+  tipoDocumento: TipoDocumento;
+  documento: string;
+  nombre: string;
+  email: string;
+  calle: string;
+  ciudad: string;
+  telefono: string;
+  zona: string;
+  fax: string;
+  /** País de Origen — ISO 3166-1 numeric code. */
+  pais: string;
+}
+
+export interface SuplidorMaestro {
+  id: string;
+  codigo: string;
+  nombre: string;
+  tid: string;
+  direccion: string;
+  telefono: string;
+  fax: string;
+  pais: string;       // ISO 3166-1 numeric code
+}
+
+// --- Users / notifications ---
 
 export type UserRole = 'admin' | 'agent' | 'client';
 
@@ -167,6 +250,8 @@ export interface User {
   email: string;
   password: string;
   role: UserRole;
+  /** For client users: the `clienteKey` ("RNC:101000011") whose expedientes they may see. */
+  clienteKey?: string;
 }
 
 export interface Notification {

@@ -1,26 +1,22 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { ExpedienteStatus } from '../types';
-import type { Expediente } from '../types';
-
-const DEFAULT_CHECKLIST = [
-  { id: 'chk-1', label: 'Documentos de importación recibidos', completed: false, completedAt: null },
-  { id: 'chk-2', label: 'Factura comercial verificada', completed: false, completedAt: null },
-  { id: 'chk-3', label: 'BL / Doc. Embarque recibido y revisado', completed: false, completedAt: null },
-  { id: 'chk-4', label: 'Clasificación arancelaria asignada', completed: false, completedAt: null },
-  { id: 'chk-5', label: 'Permisos y certificados verificados', completed: false, completedAt: null },
-  { id: 'chk-6', label: 'Declaración aduanera generada', completed: false, completedAt: null },
-  { id: 'chk-7', label: 'Pago de impuestos realizado', completed: false, completedAt: null },
-  { id: 'chk-8', label: 'Despacho aduanal completado', completed: false, completedAt: null },
-];
+import type { Expediente, Observacion } from '../types';
+import { ADMINISTRACIONES, DEFAULT_CHECKLIST_LABELS, DIGITADORES, GESTORES, PAIS_RD, TIPO_DESPACHO_LEGACY } from '../data/catalogos';
+import { parseLegacyNotes, makeObservacion } from '../utils/observaciones';
 
 function makeChecklist(completedCount: number) {
-  return DEFAULT_CHECKLIST.map((item, i) => ({
-    ...item,
-    id: `${item.id}-${crypto.randomUUID().slice(0, 4)}`,
+  return DEFAULT_CHECKLIST_LABELS.map((label, i) => ({
+    id: `chk-${i + 1}-${crypto.randomUUID().slice(0, 4)}`,
+    label,
     completed: i < completedCount,
     completedAt: i < completedCount ? '2026-04-0' + (i + 1) + 'T10:00:00Z' : null,
   }));
 }
+
+const obs = (fecha: string, usuario: string, texto: string): Observacion => ({
+  id: crypto.randomUUID(), fecha, usuario, texto,
+});
 
 const SEED_DATA: Expediente[] = [
   {
@@ -33,9 +29,9 @@ const SEED_DATA: Expediente[] = [
       paisProcedenciaCodigo: '724', paisProcedenciaNombre: 'ESPAÑA',
       facturaComercialNo: '4600527',
     },
-    importador: { codigo: '8115', nombre: 'BRAVO S A' },
+    importador: { codigo: '101-00001-1', nombre: 'BRAVO S A', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
-    consignatario: { codigo: '8115', nombre: 'BRAVO S A' },
+    consignatario: { codigo: '101-00001-1', nombre: 'BRAVO S A', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [],
     documentos: [],
@@ -52,22 +48,24 @@ const SEED_DATA: Expediente[] = [
       { id: 'p6', codigoPartida: '4818.30.00', descripcion: 'SERVILLETA SUAO 40X40 ROJA (SP4021)', organico: false, cantidad: 252.5, unidad: 'KILOGRAMOS', paisOrigen: 'ESPAÑA', valorFob: 1055.70, unitario: 4.1810, facturaDva: '4600527' },
       { id: 'p7', codigoPartida: '4818.30.00', descripcion: 'SERVILLETA SUAO 40X40 PUNTA NEGRA (SP4029)', organico: false, cantidad: 112.0, unidad: 'KILOGRAMOS', paisOrigen: 'ESPAÑA', valorFob: 434.52, unitario: 3.8796, facturaDva: '4600527' },
     ],
-    notes: 'Falta BL — pendiente de documentación de embarque', assignedUserId: '2',
+    digitador: DIGITADORES[0], gestor: GESTORES[0],
+    observaciones: [obs('2026-04-05T14:30:00Z', 'Agente López', 'Falta BL — pendiente de documentación de embarque')],
+    assignedUserId: '2',
     createdAt: '2026-02-20T08:00:00Z', updatedAt: '2026-04-05T14:30:00Z',
   },
   {
     id: '2', reference: 'DEC-2026-002', tipoExpediente: 'importacion', status: ExpedienteStatus.Registrado, checklist: makeChecklist(1),
     declaracion: {
-      idSecuencia: '4722', eta: '2026-04-25', tipoDespacho: 'MANIFIESTO',
-      administracionCodigo: '10020', administracionNombre: 'ADMINISTRACION PUERTO PLATA',
+      idSecuencia: '4722', eta: '2026-04-25', tipoDespacho: 'GENERAL',
+      administracionCodigo: '10070', administracionNombre: 'ADMINISTRACION PUERTO PLATA',
       noDeclaracion: 'DEC-2026-002', docEmbarque: 'HLCU-2026-45678',
       depositoDestino: '', puertoEntrada: 'Puerto Plata',
       paisProcedenciaCodigo: '356', paisProcedenciaNombre: 'INDIA',
       facturaComercialNo: '5002',
     },
-    importador: { codigo: '2040', nombre: 'TEXTILES MODERNOS SRL' },
+    importador: { codigo: '130-00002-2', nombre: 'TEXTILES MODERNOS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
-    consignatario: { codigo: '2040', nombre: 'TEXTILES MODERNOS SRL' },
+    consignatario: { codigo: '130-00002-2', nombre: 'TEXTILES MODERNOS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ codigo: 'SUP-01', nombre: 'Mumbai Textiles Co.', nacionalidad: 'INDIA' }],
     documentos: [{ id: 'd1', numeroFactura: '5002', fechaFactura: '2026-04-01', codigoSuplidor: 'SUP-01', valorFactura: 6000 }],
@@ -78,21 +76,22 @@ const SEED_DATA: Expediente[] = [
     partidas: [
       { id: 'p10', codigoPartida: '5208.11.01', descripcion: 'Telas de algodón crudo sin blanquear', organico: false, cantidad: 500, unidad: 'KILOGRAMOS', paisOrigen: 'INDIA', valorFob: 6000.00, unitario: 12.00, facturaDva: '5002' },
     ],
-    notes: '', assignedUserId: '2', createdAt: '2026-04-01T09:00:00Z', updatedAt: '2026-04-01T09:00:00Z',
+    digitador: DIGITADORES[1], gestor: GESTORES[1],
+    observaciones: [], assignedUserId: '2', createdAt: '2026-04-01T09:00:00Z', updatedAt: '2026-04-01T09:00:00Z',
   },
   {
     id: '3', reference: 'DEC-2026-003', tipoExpediente: 'importacion', status: ExpedienteStatus.Completo, checklist: makeChecklist(8),
     declaracion: {
-      idSecuencia: '4700', eta: '2026-03-15', tipoDespacho: 'MANIFIESTO',
+      idSecuencia: '4700', eta: '2026-03-15', tipoDespacho: 'GENERAL',
       administracionCodigo: '10010', administracionNombre: 'ADMINISTRACION SANTO DOMINGO',
       noDeclaracion: 'DEC-2026-003', docEmbarque: 'COSCO-2026-11223',
       depositoDestino: 'Almacén Central', puertoEntrada: 'Santo Domingo',
       paisProcedenciaCodigo: '156', paisProcedenciaNombre: 'CHINA',
       facturaComercialNo: '4980',
     },
-    importador: { codigo: '3050', nombre: 'ELECTRONICA GLOBAL RD' },
+    importador: { codigo: '130-00003-3', nombre: 'ELECTRONICA GLOBAL RD', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
-    consignatario: { codigo: '3050', nombre: 'ELECTRONICA GLOBAL RD' },
+    consignatario: { codigo: '130-00003-3', nombre: 'ELECTRONICA GLOBAL RD', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ codigo: 'SUP-02', nombre: 'Shenzhen Electronics Ltd', nacionalidad: 'CHINA' }],
     documentos: [{ id: 'd2', numeroFactura: '4980', fechaFactura: '2026-02-20', codigoSuplidor: 'SUP-02', valorFactura: 10500 }],
@@ -104,7 +103,9 @@ const SEED_DATA: Expediente[] = [
       { id: 'p20', codigoPartida: '8542.31.01', descripcion: 'Componentes electrónicos - circuitos integrados', organico: false, cantidad: 1000, unidad: 'UNIDADES', paisOrigen: 'CHINA', valorFob: 5500.00, unitario: 5.50, facturaDva: '4980' },
       { id: 'p21', codigoPartida: '8534.00.01', descripcion: 'Placas PCB para ensamblaje', organico: false, cantidad: 200, unidad: 'UNIDADES', paisOrigen: 'CHINA', valorFob: 5000.00, unitario: 25.00, facturaDva: '4980' },
     ],
-    notes: 'Despacho completado sin incidencias', assignedUserId: '2', createdAt: '2026-02-15T10:00:00Z', updatedAt: '2026-03-20T16:00:00Z',
+    digitador: DIGITADORES[2], gestor: GESTORES[2],
+    observaciones: [obs('2026-03-20T16:00:00Z', 'Agente López', 'Despacho completado sin incidencias')],
+    assignedUserId: '2', createdAt: '2026-02-15T10:00:00Z', updatedAt: '2026-03-20T16:00:00Z',
   },
   {
     id: '4', reference: 'DEC-2026-004', tipoExpediente: 'importacion', status: ExpedienteStatus.PendienteInfo, checklist: makeChecklist(3),
@@ -116,9 +117,9 @@ const SEED_DATA: Expediente[] = [
       paisProcedenciaCodigo: '764', paisProcedenciaNombre: 'TAILANDIA',
       facturaComercialNo: '5010',
     },
-    importador: { codigo: '4060', nombre: 'ALIMENTOS DEL CARIBE SRL' },
+    importador: { codigo: '130-00004-4', nombre: 'ALIMENTOS DEL CARIBE SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
-    consignatario: { codigo: '4060', nombre: 'ALIMENTOS DEL CARIBE SRL' },
+    consignatario: { codigo: '130-00004-4', nombre: 'ALIMENTOS DEL CARIBE SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ codigo: 'SUP-03', nombre: 'Bangkok Foods Export', nacionalidad: 'TAILANDIA' }],
     documentos: [{ id: 'd3', numeroFactura: '5010', fechaFactura: '2026-03-28', codigoSuplidor: 'SUP-03', valorFactura: 6000 }],
@@ -129,21 +130,23 @@ const SEED_DATA: Expediente[] = [
     partidas: [
       { id: 'p30', codigoPartida: '2005.99.01', descripcion: 'Productos alimenticios enlatados — vegetales', organico: false, cantidad: 2000, unidad: 'KILOGRAMOS', paisOrigen: 'TAILANDIA', valorFob: 6000.00, unitario: 3.00, facturaDva: '5010' },
     ],
-    notes: 'ALERTA: Falta permiso sanitario', assignedUserId: '2', createdAt: '2026-03-28T11:00:00Z', updatedAt: '2026-04-08T08:00:00Z',
+    digitador: DIGITADORES[3], gestor: GESTORES[3],
+    observaciones: [obs('2026-04-08T08:00:00Z', 'Admin García', 'ALERTA: Falta permiso sanitario')],
+    assignedUserId: '2', createdAt: '2026-03-28T11:00:00Z', updatedAt: '2026-04-08T08:00:00Z',
   },
   {
     id: '5', reference: 'DEC-2026-005', tipoExpediente: 'importacion', status: ExpedienteStatus.ProcesoVerificacion, checklist: makeChecklist(6),
     declaracion: {
-      idSecuencia: '4740', eta: '2026-04-18', tipoDespacho: 'MANIFIESTO',
-      administracionCodigo: '10040', administracionNombre: 'ADMINISTRACION CAUCEDO',
+      idSecuencia: '4740', eta: '2026-04-18', tipoDespacho: 'GENERAL',
+      administracionCodigo: '10150', administracionNombre: 'ADMINISTRACION PUERTO MULTIMODAL CAUCEDO',
       noDeclaracion: 'DEC-2026-005', docEmbarque: 'MSC-2026-99887',
       depositoDestino: 'Zona Franca', puertoEntrada: 'Caucedo',
       paisProcedenciaCodigo: '276', paisProcedenciaNombre: 'ALEMANIA',
       facturaComercialNo: '5015',
     },
-    importador: { codigo: '5070', nombre: 'AUTOPARTES EXPRESS SRL' },
+    importador: { codigo: '130-00005-5', nombre: 'AUTOPARTES EXPRESS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
-    consignatario: { codigo: '5070', nombre: 'AUTOPARTES EXPRESS SRL' },
+    consignatario: { codigo: '130-00005-5', nombre: 'AUTOPARTES EXPRESS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ codigo: 'SUP-04', nombre: 'Hamburg Auto GmbH', nacionalidad: 'ALEMANIA' }],
     documentos: [{ id: 'd4', numeroFactura: '5015', fechaFactura: '2026-04-02', codigoSuplidor: 'SUP-04', valorFactura: 17500 }],
@@ -155,21 +158,23 @@ const SEED_DATA: Expediente[] = [
       { id: 'p40', codigoPartida: '8708.30.01', descripcion: 'Autopartes — Sistemas de frenos', organico: false, cantidad: 300, unidad: 'UNIDADES', paisOrigen: 'ALEMANIA', valorFob: 13500.00, unitario: 45.00, facturaDva: '5015' },
       { id: 'p41', codigoPartida: '8421.23.01', descripcion: 'Autopartes — Filtros de aceite', organico: false, cantidad: 500, unidad: 'UNIDADES', paisOrigen: 'ALEMANIA', valorFob: 4000.00, unitario: 8.00, facturaDva: '5015' },
     ],
-    notes: 'Envío parcial — segundo embarque pendiente', assignedUserId: '2', createdAt: '2026-04-02T07:00:00Z', updatedAt: '2026-04-09T12:00:00Z',
+    digitador: DIGITADORES[0], gestor: GESTORES[1],
+    observaciones: [obs('2026-04-09T12:00:00Z', 'Agente López', 'Envío parcial — segundo embarque pendiente')],
+    assignedUserId: '2', createdAt: '2026-04-02T07:00:00Z', updatedAt: '2026-04-09T12:00:00Z',
   },
   {
     id: '6', reference: 'DEC-2026-006', tipoExpediente: 'importacion', status: ExpedienteStatus.Manifestado, checklist: makeChecklist(0),
     declaracion: {
-      idSecuencia: '4750', eta: '2026-05-01', tipoDespacho: 'MANIFIESTO',
-      administracionCodigo: '10020', administracionNombre: 'ADMINISTRACION PUERTO PLATA',
+      idSecuencia: '4750', eta: '2026-05-01', tipoDespacho: 'GENERAL',
+      administracionCodigo: '10070', administracionNombre: 'ADMINISTRACION PUERTO PLATA',
       noDeclaracion: 'DEC-2026-006', docEmbarque: 'OOCL-2026-55667',
       depositoDestino: '', puertoEntrada: 'Puerto Plata',
       paisProcedenciaCodigo: '756', paisProcedenciaNombre: 'SUIZA',
       facturaComercialNo: '5020',
     },
-    importador: { codigo: '6080', nombre: 'FARMACEUTICA CENTRAL SRL' },
+    importador: { codigo: '130-00006-6', nombre: 'FARMACEUTICA CENTRAL SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
-    consignatario: { codigo: '6080', nombre: 'FARMACEUTICA CENTRAL SRL' },
+    consignatario: { codigo: '130-00006-6', nombre: 'FARMACEUTICA CENTRAL SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ codigo: 'SUP-05', nombre: 'Basel Pharma AG', nacionalidad: 'SUIZA' }],
     documentos: [{ id: 'd5', numeroFactura: '5020', fechaFactura: '2026-04-08', codigoSuplidor: 'SUP-05', valorFactura: 40000 }],
@@ -180,93 +185,178 @@ const SEED_DATA: Expediente[] = [
     partidas: [
       { id: 'p50', codigoPartida: '2941.10.01', descripcion: 'Materia prima farmacéutica — antibióticos', organico: false, cantidad: 50, unidad: 'KILOGRAMOS', paisOrigen: 'SUIZA', valorFob: 40000.00, unitario: 800.00, facturaDva: '5020' },
     ],
-    notes: 'Requiere permiso sanitario y certificado de origen', assignedUserId: '2', createdAt: '2026-04-08T15:00:00Z', updatedAt: '2026-04-08T15:00:00Z',
+    digitador: DIGITADORES[1], gestor: GESTORES[2],
+    observaciones: [obs('2026-04-08T15:00:00Z', 'Agente López', 'Requiere permiso sanitario y certificado de origen')],
+    assignedUserId: '2', createdAt: '2026-04-08T15:00:00Z', updatedAt: '2026-04-08T15:00:00Z',
   },
 ];
 
-export function computeProgress(checklist: Expediente['checklist']): number {
-  if (checklist.length === 0) return 0;
-  return Math.round((checklist.filter((c) => c.completed).length / checklist.length) * 100);
-}
+export { computeProgress } from '../utils/progress';
 
-/** Helper to get importer name for display */
-export function getImportadorName(exp: Expediente): string {
-  return exp.importador.nombre;
-}
-
-/** Helper to get total CIF */
-export function getValorCif(exp: Expediente): number {
-  return exp.valores.valorCifTotal;
-}
+export type NewExpediente = Omit<Expediente, 'id' | 'createdAt' | 'updatedAt'>;
 
 interface ExpedientesState {
   expedientes: Expediente[];
   getAll: () => Expediente[];
   getById: (id: string) => Expediente | undefined;
-  create: (data: Omit<Expediente, 'id' | 'createdAt' | 'updatedAt'>) => Expediente;
+  create: (data: NewExpediente) => Expediente;
   update: (id: string, data: Partial<Expediente>) => void;
   remove: (id: string) => void;
   toggleChecklistItem: (expedienteId: string, itemId: string) => void;
-  bulkAdd: (items: Omit<Expediente, 'id' | 'createdAt' | 'updatedAt'>[]) => void;
+  bulkAdd: (items: NewExpediente[]) => void;
+  addObservacion: (expedienteId: string, usuario: string, texto: string) => void;
+  updateObservacion: (expedienteId: string, obsId: string, texto: string) => void;
+  removeObservacion: (expedienteId: string, obsId: string) => void;
+  resetToSeed: () => void;
 }
 
-export const useExpedientesStore = create<ExpedientesState>((set, get) => ({
-  expedientes: SEED_DATA,
+const normName = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const ADMIN_BY_NAME = new Map(ADMINISTRACIONES.map((a) => [normName(a.nombre), a.codigo]));
 
-  getAll: () => get().expedientes,
+/**
+ * Upgrades records written by older versions of the app (persisted state or old exports):
+ * v1 -> v2: `notes: string` -> `observaciones: Observacion[]`, missing digitador/gestor.
+ * v2 -> v3: administración codes were placeholders before the SIGA area table arrived;
+ *           when the stored name matches a catalog entry, the code is corrected.
+ * v3 -> v4: tipo de despacho values that SIGA does not offer are mapped to the real ones.
+ * v5:       the importer code became the client's RNC, so the old internal codes are remapped.
+ */
+const IMPORTADOR_CODIGO_LEGACY: Record<string, string> = {
+  '8115': '101-00001-1',
+  '2040': '130-00002-2',
+  '3050': '130-00003-3',
+  '4060': '130-00004-4',
+  '5070': '130-00005-5',
+  '6080': '130-00006-6',
+};
 
-  getById: (id) => get().expedientes.find((e) => e.id === id),
+const toRnc = (parte: { codigo: string; nombre: string } | undefined) =>
+  parte && IMPORTADOR_CODIGO_LEGACY[parte.codigo]
+    ? { ...parte, codigo: IMPORTADOR_CODIGO_LEGACY[parte.codigo] }
+    : parte;
 
-  create: (data) => {
-    const now = new Date().toISOString();
-    const newExp: Expediente = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: now,
-      updatedAt: now,
-    };
-    set((s) => ({ expedientes: [...s.expedientes, newExp] }));
-    return newExp;
-  },
+export function migrateExpediente(raw: Record<string, unknown>): Expediente {
+  const e = raw as unknown as Expediente & { notes?: string };
+  const observaciones = Array.isArray(e.observaciones) ? e.observaciones : parseLegacyNotes(e.notes);
+  const upgraded: Expediente & { notes?: string } = {
+    ...e,
+    observaciones,
+    digitador: e.digitador ?? '',
+    gestor: e.gestor ?? '',
+  };
+  delete upgraded.notes;
 
-  update: (id, data) => {
-    set((s) => ({
-      expedientes: s.expedientes.map((e) =>
-        e.id === id ? { ...e, ...data, updatedAt: new Date().toISOString() } : e,
-      ),
-    }));
-  },
+  const d = upgraded.declaracion;
+  if (d) {
+    const patch: Partial<typeof d> = {};
+    const realAdmin = d.administracionNombre ? ADMIN_BY_NAME.get(normName(d.administracionNombre)) : undefined;
+    if (realAdmin && realAdmin !== d.administracionCodigo) patch.administracionCodigo = realAdmin;
+    const realDespacho = TIPO_DESPACHO_LEGACY[String(d.tipoDespacho ?? '').trim().toUpperCase()];
+    if (realDespacho) patch.tipoDespacho = realDespacho;
+    if (Object.keys(patch).length) upgraded.declaracion = { ...d, ...patch };
+  }
 
-  remove: (id) => {
-    set((s) => ({ expedientes: s.expedientes.filter((e) => e.id !== id) }));
-  },
+  const importador = toRnc(upgraded.importador);
+  if (importador) upgraded.importador = importador;
+  const consignatario = toRnc(upgraded.consignatario);
+  if (consignatario) upgraded.consignatario = consignatario;
 
-  toggleChecklistItem: (expedienteId, itemId) => {
-    set((s) => ({
-      expedientes: s.expedientes.map((e) => {
-        if (e.id !== expedienteId) return e;
-        const checklist = e.checklist.map((c) =>
-          c.id === itemId
-            ? { ...c, completed: !c.completed, completedAt: !c.completed ? new Date().toISOString() : null }
-            : c,
-        );
-        const completedCount = checklist.filter((c) => c.completed).length;
-        let status: ExpedienteStatus = e.status;
-        if (completedCount === checklist.length) status = ExpedienteStatus.Completo;
-        else if (completedCount > 0) status = ExpedienteStatus.Verificado;
-        return { ...e, checklist, status, updatedAt: new Date().toISOString() };
-      }),
-    }));
-  },
+  return upgraded;
+}
 
-  bulkAdd: (items) => {
-    const now = new Date().toISOString();
-    const newExps = items.map((data) => ({
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: now,
-      updatedAt: now,
-    }));
-    set((s) => ({ expedientes: [...s.expedientes, ...newExps] }));
-  },
-}));
+export const useExpedientesStore = create<ExpedientesState>()(
+  persist(
+    (set, get) => ({
+      expedientes: SEED_DATA,
+
+      getAll: () => get().expedientes,
+
+      getById: (id) => get().expedientes.find((e) => e.id === id),
+
+      create: (data) => {
+        const now = new Date().toISOString();
+        const newExp: Expediente = { ...data, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
+        set((s) => ({ expedientes: [...s.expedientes, newExp] }));
+        return newExp;
+      },
+
+      update: (id, data) => {
+        set((s) => ({
+          expedientes: s.expedientes.map((e) =>
+            e.id === id ? { ...e, ...data, updatedAt: new Date().toISOString() } : e,
+          ),
+        }));
+      },
+
+      remove: (id) => {
+        set((s) => ({ expedientes: s.expedientes.filter((e) => e.id !== id) }));
+      },
+
+      toggleChecklistItem: (expedienteId, itemId) => {
+        set((s) => ({
+          expedientes: s.expedientes.map((e) => {
+            if (e.id !== expedienteId) return e;
+            const checklist = e.checklist.map((c) =>
+              c.id === itemId
+                ? { ...c, completed: !c.completed, completedAt: !c.completed ? new Date().toISOString() : null }
+                : c,
+            );
+            const completedCount = checklist.filter((c) => c.completed).length;
+            let status: ExpedienteStatus = e.status;
+            if (completedCount === checklist.length) status = ExpedienteStatus.Completo;
+            else if (completedCount > 0) status = ExpedienteStatus.Verificado;
+            return { ...e, checklist, status, updatedAt: new Date().toISOString() };
+          }),
+        }));
+      },
+
+      bulkAdd: (items) => {
+        const now = new Date().toISOString();
+        const newExps = items.map((data) => ({ ...data, id: crypto.randomUUID(), createdAt: now, updatedAt: now }));
+        set((s) => ({ expedientes: [...s.expedientes, ...newExps] }));
+      },
+
+      addObservacion: (expedienteId, usuario, texto) => {
+        if (!texto.trim()) return;
+        set((s) => ({
+          expedientes: s.expedientes.map((e) =>
+            e.id === expedienteId
+              ? { ...e, observaciones: [...e.observaciones, makeObservacion(usuario, texto)], updatedAt: new Date().toISOString() }
+              : e,
+          ),
+        }));
+      },
+
+      updateObservacion: (expedienteId, obsId, texto) => {
+        set((s) => ({
+          expedientes: s.expedientes.map((e) =>
+            e.id === expedienteId
+              ? { ...e, observaciones: e.observaciones.map((o) => (o.id === obsId ? { ...o, texto: texto.trim() } : o)), updatedAt: new Date().toISOString() }
+              : e,
+          ),
+        }));
+      },
+
+      removeObservacion: (expedienteId, obsId) => {
+        set((s) => ({
+          expedientes: s.expedientes.map((e) =>
+            e.id === expedienteId
+              ? { ...e, observaciones: e.observaciones.filter((o) => o.id !== obsId), updatedAt: new Date().toISOString() }
+              : e,
+          ),
+        }));
+      },
+
+      resetToSeed: () => set({ expedientes: SEED_DATA }),
+    }),
+    {
+      name: 'aduana-expedientes',
+      version: 5,
+      partialize: (s) => ({ expedientes: s.expedientes }),
+      migrate: (persisted) => {
+        const state = persisted as { expedientes?: Record<string, unknown>[] };
+        return { expedientes: (state.expedientes ?? []).map(migrateExpediente) };
+      },
+    },
+  ),
+);

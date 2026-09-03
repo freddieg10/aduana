@@ -1,0 +1,191 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="ExportDUA"
+           targetNamespace="http://aduanas.gob.do/XSD/ExportClearance/ExportDUA.xsd"
+           xmlns="http://aduanas.gob.do/XSD/ExportClearance/ExportDUA.xsd"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
+           xmlns:msprop="urn:schemas-microsoft-com:xml-msprop"
+>
+  <xs:element name="ExportDUA" msdata:IsDataSet="true" msdata:UseCurrentLocale="true">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="ExpDeclaration" minOccurs="1" maxOccurs="unbounded" msdata:Locale="es-DO">
+          <xs:complexType>
+            <xs:sequence>
+              <!-- Declaration -->
+              <!-- Declaration date -->
+              <xs:element name="DeclarationDate"        type="xs:dateTime"   minOccurs="1" />
+              <!-- Clearance Type :  -->
+              <xs:element name="ClearanceType"          type="xs:string"   minOccurs="1" />
+              <!-- Local administration code :  -->
+              <xs:element name="AreaCode"               type="xs:string"   minOccurs="1" />
+              <!-- DUA form number  -->
+              <xs:element name="FormNo"                 type="xs:string"  minOccurs="0" />
+              <!-- B/L number  -->
+              <xs:element name="BLNo"                   type="xs:string"   minOccurs="0" />
+              <!-- Destination warehouse code -->
+              <xs:element name="BondedArea"             type="xs:string"   minOccurs="0" />
+              <!-- Transport comany code [RNC|PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="TransportCompany"        type="xs:string"   minOccurs="0" />
+              <!-- Transport company nationality Code -->
+              <xs:element name="TransportCompanynationality" type="xs:string"   minOccurs="0" />
+              <!-- Transport method code -->
+              <xs:element name="TransportMethod"         type="xs:string"   minOccurs="0" />
+              <!-- Departure Port Code-->
+              <xs:element name="DeparturePort"          type="xs:string"   minOccurs="1" />
+              <!-- Destination Country Code-->
+              <xs:element name="DestinationCountry"     type="xs:string"   minOccurs="1" />
+              <!-- Voyage No-->
+              <xs:element name="VoyageNo"               type="xs:string"   minOccurs="0" />
+              <!-- Exporter -->
+              <!-- Exporter Code [RNC|PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="ExporterCode"           type="xs:string"   minOccurs="1" />
+              <xs:element name="ExporterName"           type="xs:string"   minOccurs="1" />
+              <xs:element name="ExporterNationality"           type="xs:string"   minOccurs="1" />
+              <!-- Buyer Code [RNC|PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="BuyerCode"              type="xs:string"   minOccurs="1" />
+              <xs:element name="BuyerName"              type="xs:string"   minOccurs="1" />
+              <xs:element name="BuyerNationality"              type="xs:string"   minOccurs="1" />
+              <!-- Customs broker company code [RNC|PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="BrokerCompanyCode"      type="xs:string"   minOccurs="0" />
+              <!-- Customs broker employee code [PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="BrokerEmployeeCode"     type="xs:string"   minOccurs="0" />
+              <!-- Declarant code [PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="DeclarantCode"           type="xs:string"   minOccurs="1" />
+              <xs:element name="DeclarantName"           type="xs:string"   minOccurs="1" />
+              <xs:element name="DeclarantNationality"    type="xs:string"   minOccurs="1" />
+              <!-- Regiemn code -->
+              <xs:element name="RegimenCode"            type="xs:string"   minOccurs="1" default="0" />
+              <!-- Total FOB value -->
+              <xs:element name="TotalFOB"               type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Insurance value -->
+              <xs:element name="InsuranceValue"        type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Freight value -->
+              <xs:element name="FreightValue"           type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Other value -->
+              <xs:element name="OtherValue"             type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Total CIF code -->
+              <xs:element name="TotalCIF"               type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Goods Weight -->
+              <xs:element name="TotalWeight"            type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Net weight -->
+              <xs:element name="NetWeight"              type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Remark -->
+              <xs:element name="Remark"                 type="xs:string"   minOccurs="0" />
+              <!-- Free Zone & Admission Temporal CIF Value -->
+              <xs:element name="SZCIFValue"             type="xs:decimal"  minOccurs="0" />
+              <!-- Free Zone & Admission Temporal Materials Value -->
+              <xs:element name="SZMaterialsValue"       type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Free Zone & Admission Temporal Salary Value -->
+              <xs:element name="SZSalaryValue"          type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Free Zone & Admission Temporal Service Value-->
+              <xs:element name="SZServiceValue"         type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Free Zone & Admission Temporal Others Value-->
+              <xs:element name="SZOthersValue"          type="xs:decimal"  minOccurs="0" default="0" />
+              <!-- Export Declaration Products -->
+              <xs:element name="ExpDeclarationProduct" minOccurs="1" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <xs:sequence>
+                    <!-- HS Code -->
+                    <xs:element name="HSCode"                 type="xs:string"  minOccurs="1" />
+                    <!-- Product code -->
+                    <xs:element name="ProductCode"            type="xs:string"  minOccurs="0" />
+                    <!-- Product Name -->
+                    <xs:element name="ProductName"            type="xs:string"  minOccurs="1" />
+                    <!-- Brand code -->
+                    <xs:element name="BrandCode"              type="xs:string"  minOccurs="0" />
+                    <!-- Brand Name -->
+                    <xs:element name="BrandName"              type="xs:string"  minOccurs="1" />
+                    <!-- Model code -->
+                    <xs:element name="ModelCode"              type="xs:string"  minOccurs="0" />
+                    <!-- Model Name -->
+                    <xs:element name="ModelName"              type="xs:string"  minOccurs="1" />
+                    <!-- Product status code -->
+                    <xs:element name="ProductStatusCode"      type="xs:string"  minOccurs="1" />
+                    <!-- Product year -->
+                    <xs:element name="ProductYear"            type="xs:string"  minOccurs="0" />
+                    <!-- FOB value -->
+                    <xs:element name="FOBValue"               type="xs:decimal" minOccurs="0" />
+                    <!-- Unit code -->
+                    <xs:element name="UnitCode"               type="xs:string"  minOccurs="1" />
+                    <!-- Quantity -->
+                    <xs:element name="Qty"                    type="xs:decimal" minOccurs="0" />
+                    <!-- Weight -->
+                    <xs:element name="Weight"                 type="xs:decimal"  minOccurs="0" />
+                    <!-- Product Specification -->
+                    <xs:element name="ProductSpecification"   type="xs:string"  minOccurs="0" />
+                    <!-- TempProduct YN -->
+                    <xs:element name="TempProductYN"          type="xs:boolean"  minOccurs="1" />
+                    <!-- Origin certification Y/N -->
+                    <xs:element name="CertificateOrignYN"     type="xs:boolean" minOccurs="1" />
+                    <!-- Origin certification number -->
+                    <xs:element name="CertificateOriginNo"    type="xs:string"  minOccurs="0" />
+                    <!-- Origin country code -->
+                    <xs:element name="OriginCountry"          type="xs:string"  minOccurs="1" />
+                    <!-- Organic Y/N -->
+                    <xs:element name="OrganicYN"              type="xs:boolean" minOccurs="1" />
+                    <!-- Grande alcohol -->
+                    <xs:element name="GradeAlcohol"           type="xs:decimal" minOccurs="0" />
+                    <!-- Customer sales price -->
+                    <xs:element name="CustomerSalesPrice"     type="xs:string"  minOccurs="0" />
+                    <!-- Product serial number -->
+                    <xs:element name="ProductSerialNo"        type="xs:string"  minOccurs="0" />
+                    <!-- Vehicle type code -->
+                    <xs:element name="VehicleType"            type="xs:string"  minOccurs="0" />
+                    <!-- Vehicle Chassis -->
+                    <xs:element name="VehicleChassis"         type="xs:string"  minOccurs="0" />
+                    <!-- Vehicle color -->
+                    <xs:element name="VehicleColor"           type="xs:string"  minOccurs="0" />
+                    <!-- Vehicle motor -->
+                    <xs:element name="VehicleMotor"           type="xs:string"  minOccurs="0" />
+                    <!-- Vehicle CC -->
+                    <xs:element name="VehicleCC"              type="xs:short"   minOccurs="0" />
+                    <!-- Product description -->
+                    <xs:element name="ProductDescription"     type="xs:string"  minOccurs="0" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <!-- Export Declaration Containers -->
+              <xs:element name="ExpDeclarationContainer" minOccurs="0" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <!-- Columns for Database -->
+                  <xs:sequence>
+                    <!-- Container Type Code-->
+                    <xs:element name="ContainerType"             type="xs:string" minOccurs="1" />
+                    <!-- Container No-->
+                    <xs:element name="ContainerNo"               type="xs:string" minOccurs="1" />
+                    <!-- Seal No-->
+                    <xs:element name="SealNo1"                 type="xs:string" minOccurs="0" />
+                    <!-- Seal No-->
+                    <xs:element name="SealNo2"                    type="xs:string" minOccurs="0" />
+                    <!-- Plate No-->
+                    <xs:element name="ContainerPlate"            type="xs:string" minOccurs="0" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <!-- Export Declaration Required Documents -->
+              <xs:element name="ExpDeclarationRequiredDocument" minOccurs="0" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <xs:sequence>
+                    <!-- Required Document Code-->
+                    <xs:element name="RequiredDocumentCode" type="xs:string" minOccurs="1" />
+                    <!-- Other Document Description-->
+                    <xs:element name="OtherDocTypeDesc"     type="xs:string" minOccurs="0" />
+                    <!-- Other Document No-->
+                    <xs:element name="RequiredDocumentNo"   type="xs:string" minOccurs="1" />
+                    <!-- Issuer Name -->
+                    <xs:element name="BizDocIssuerName"     type="xs:string" minOccurs="1" />
+                    <!-- Issuer Email-->
+                    <xs:element name="BizDocIssuerEmail"    type="xs:string" minOccurs="0" />
+                    <!-- Issuer Telephone No -->
+                    <xs:element name="BizDocIssuerTel"      type="xs:string" minOccurs="1" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

@@ -1,0 +1,347 @@
+﻿<?xml version="1.0" standalone="yes"?>
+<xs:schema id="ImportDUA"
+           targetNamespace="http://aduanas.gob.do/XSD/ImportClearance/ImportDUA.xsd"
+           xmlns="http://aduanas.gob.do/XSD/ImportClearance/ImportDUA.xsd"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
+           xmlns:msprop="urn:schemas-microsoft-com:xml-msprop">
+  <xs:element name="ImportDUA" msdata:IsDataSet="true" msdata:UseCurrentLocale="true">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="ImpDeclaration" minOccurs="1" maxOccurs="unbounded" msdata:Locale="es-DO">
+          <xs:complexType>
+            <xs:sequence>
+              <!-- Declaration -->
+              <!-- Declaration date -->
+              <xs:element name="DeclarationDate"         type="xs:dateTime" minOccurs="1" maxOccurs="1" />
+              <!-- Clearance Type :  -->
+              <xs:element name="ClearanceType"           type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Local administration code :  -->
+              <xs:element name="AreaCode"                type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- DUA form number  -->
+              <xs:element name="FormNo"                  type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- B/L number  -->
+              <xs:element name="BLNo"                    type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- Manifest number  -->
+              <xs:element name="ManifestNo"              type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- consignee code : [RNC|PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="ConsigneeCode"           type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <xs:element name="ConsigneeName"           type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <xs:element name="ConsigneeNationality"    type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Cargo control number -->
+              <xs:element name="CargoControlNo"          type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- Commercial invoice number -->
+              <xs:element name="CommercialInvoiceNo"     type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Destination warehouse code -->
+              <xs:element name="DestinationLocationCode" type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- Entry port code -->
+              <xs:element name="EntryPort"               type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Departure country code -->
+              <xs:element name="DepartureCountryCode"    type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Transport comany code -->
+              <xs:element name="TransportCompanyCode"    type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Transport company nationality -->
+              <xs:element name="TransportNationality"    type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Transport method code -->
+              <xs:element name="TransportMethod"         type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Entry expected date -->
+              <xs:element name="EntryPlanDate"           type="xs:dateTime" minOccurs="1" maxOccurs="1" />
+              <!-- Actual entry date -->
+              <xs:element name="EntryDate"               type="xs:dateTime" minOccurs="1" maxOccurs="1" />
+              <!-- Importer code : [RNC|PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+              <xs:element name="ImporterCode"            type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <xs:element name="ImporterName"            type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <xs:element name="ImporterNationality"     type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Customs broker employee code -->
+              <xs:element name="BrokerEmployeeCode"      type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- Customs broker comapy code -->
+              <xs:element name="BrokerCompanyCode"       type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- Declarant code : [PAS][Country Code][Identity Number] or [CED][Identity Number]-->
+              <xs:element name="DeclarantCode"           type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <xs:element name="DeclarantName"           type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <xs:element name="DeclarantNationality"    type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Regiemn code -->
+              <xs:element name="RegimenCode"             type="xs:string"   minOccurs="1" maxOccurs="1" />
+              <!-- Agreement code -->
+              <xs:element name="AgreementCode"           type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- Total FOB value -->
+              <xs:element name="TotalFOB"                type="xs:decimal"  minOccurs="1" maxOccurs="1" />
+              <!-- Insurance value -->
+              <xs:element name="InsuranceValue"          type="xs:decimal"  minOccurs="1" maxOccurs="1" />
+              <!-- Freight value -->
+              <xs:element name="FreightValue"            type="xs:decimal"  minOccurs="1" maxOccurs="1" />
+              <!-- Other value -->
+              <xs:element name="OtherValue"              type="xs:decimal"  minOccurs="1" maxOccurs="1" />
+              <!-- Total CIF code -->
+              <xs:element name="TotalCIF"                type="xs:decimal"  minOccurs="1" maxOccurs="1" />
+              <!-- Goods Weight -->
+              <xs:element name="TotalWeight"             type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+              <!-- Net weight -->
+              <xs:element name="NetWeight"               type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+              <!-- Remark -->
+              <xs:element name="Remark"                  type="xs:string"   minOccurs="0" maxOccurs="1" />
+              <!-- Import Declaration Foreign Suppliers -->
+              <xs:element name="ImpDeclarationSupplier" minOccurs="1" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <xs:sequence>
+                    <!-- Foreign supplier name -->
+                    <xs:element name="ForeignSupplierName"      type="xs:string" minOccurs="1" maxOccurs="1" />
+                    <!-- Foreign supplier code : [RNC|PAS][Country Code][Identity Number] or [CED][Identity Number] -->
+                    <xs:element name="ForeignSupplierCode"      type="xs:string" minOccurs="1" maxOccurs="1" />
+                    <!-- Foreign supplier code -->
+                    <xs:element name="ForeignSupplierNationality"      type="xs:string" minOccurs="1" maxOccurs="1" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <!-- Import Declaration Products -->
+              <xs:element name="ImpDeclarationProduct" minOccurs="1" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <xs:sequence>
+                    <!-- HS Code -->
+                    <xs:element name="HSCode"                 type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Product code -->
+                    <xs:element name="ProductCode"            type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Product Name -->
+                    <xs:element name="ProductName"            type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Brand code -->
+                    <xs:element name="BrandCode"              type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Brand Name -->
+                    <xs:element name="BrandName"              type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Model code -->
+                    <xs:element name="ModelCode"              type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Model Name -->
+                    <xs:element name="ModelName"              type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Product status code -->
+                    <xs:element name="ProductStatusCode"      type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Product year -->
+                    <xs:element name="ProductYear"            type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- FOB value -->
+                    <xs:element name="FOBValue"               type="xs:decimal" minOccurs="1" maxOccurs="1" />
+                    <!-- Unit code -->
+                    <xs:element name="UnitCode"               type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Quantity -->
+                    <xs:element name="Qty"                    type="xs:decimal" minOccurs="1" maxOccurs="1" default="0" />
+                    <!-- Quantity Presentation -->
+                    <xs:element name="QtyPresentation"        type="xs:int" minOccurs="1" maxOccurs="1" default="0" />
+                    <!-- Weight -->
+                    <xs:element name="Weight"                 type="xs:decimal"  minOccurs="0" maxOccurs="1" />
+                    <!-- Product Specification -->
+                    <xs:element name="ProductSpecification"   type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- TempProduct YN -->
+                    <xs:element name="TempProductYN"          type="xs:boolean"  minOccurs="1" maxOccurs="1" />
+                    <!-- Origin certification Y/N -->
+                    <xs:element name="CertificateOrignYN"     type="xs:boolean" minOccurs="1" maxOccurs="1" />
+                    <!-- Origin certification number -->
+                    <xs:element name="CertificateOriginNo"    type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Origin country code -->
+                    <xs:element name="OriginCountry"          type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Organic Y/N -->
+                    <xs:element name="OrganicYN"              type="xs:boolean" minOccurs="1" maxOccurs="1" />
+                    <!-- Grande alcohol -->
+                    <xs:element name="GradeAlcohol"           type="xs:decimal" minOccurs="0" maxOccurs="1" />
+                    <!-- Customer sales price -->
+                    <xs:element name="CustomerSalesPrice"     type="xs:decimal"  minOccurs="0" maxOccurs="1" />
+                    <!-- Product serial number -->
+                    <xs:element name="ProductSerialNo"        type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Vehicle type code -->
+                    <xs:element name="VehicleType"            type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Vehicle Chassis -->
+                    <xs:element name="VehicleChassis"         type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Vehicle color -->
+                    <xs:element name="VehicleColor"           type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Vehicle motor -->
+                    <xs:element name="VehicleMotor"           type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Vehicle CC -->
+                    <xs:element name="VehicleCC"              type="xs:short"   minOccurs="0" maxOccurs="1" />
+                    <!-- Product description -->
+                    <xs:element name="ProductDescription"     type="xs:string"  minOccurs="0" maxOccurs="1" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <!-- Import Declaration -->
+              <xs:element name="ImpDeclarationContainer" minOccurs="0" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <xs:sequence>
+                    <!-- Container Type Code-->
+                    <xs:element name="ContainerType"             type="xs:string" minOccurs="1" maxOccurs="1" />
+                    <!-- Container No-->
+                    <xs:element name="ContainerNo"               type="xs:string" minOccurs="1" maxOccurs="1" />
+                    <!-- Seal No-->
+                    <xs:element name="SealNo1"                    type="xs:string" minOccurs="0" maxOccurs="1" />
+                    <!-- Seal No-->
+                    <xs:element name="SealNo2"                    type="xs:string" minOccurs="0" maxOccurs="1" />
+                    <!-- Plate No-->
+                    <xs:element name="ContainerPlate"            type="xs:string" minOccurs="0" maxOccurs="1" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <!-- Import Declaration Documents -->
+              <xs:element name="ImpDeclarationDocument" minOccurs="0" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <xs:sequence>
+                    <!-- Required Document Code-->
+                    <xs:element name="RequiredDocumentCode" type="xs:string" minOccurs="1" maxOccurs="1" />
+                    <!-- Other Document Description-->
+                    <xs:element name="OtherDocTypeDesc"     type="xs:string" minOccurs="0" maxOccurs="1" />
+                    <!-- Other Document No-->
+                    <xs:element name="RequiredDocumentNo"   type="xs:string" minOccurs="1" maxOccurs="1" />
+                    <!-- Issuer Name -->
+                    <xs:element name="BizDocIssuerName"     type="xs:string" minOccurs="1" maxOccurs="1" />
+                    <!-- Issuer Email-->
+                    <xs:element name="BizDocIssuerEmail"    type="xs:string" minOccurs="0" maxOccurs="1" />
+                    <!-- Issuer Telephone No -->
+                    <xs:element name="BizDocIssuerTel"      type="xs:string" minOccurs="1" maxOccurs="1" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <!-- Import Price Declaration (DVA) -->
+              <xs:element name="ImpPriceDeclaration" minOccurs="0" maxOccurs="unbounded" msdata:Locale="es-DO">
+                <xs:complexType>
+                  <xs:sequence>
+                    <!-- Product information -->
+                    <!-- HSCode -->
+                    <xs:element name="HSCode"             type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Brand Code -->
+                    <xs:element name="BrandCode"          type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Brand Name -->
+                    <xs:element name="BrandName"          type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Model Code -->
+                    <xs:element name="ModelCode"          type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Model Name -->
+                    <xs:element name="ModelName"          type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Product Code -->
+                    <xs:element name="ProductCode"        type="xs:string"  minOccurs="0" maxOccurs="1" />
+                    <!-- Product Name -->
+                    <xs:element name="ProductName"        type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Origin Country Code -->
+                    <xs:element name="OriginCountry"      type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- Unit Code -->
+                    <xs:element name="UnitCode"           type="xs:string"  minOccurs="1" maxOccurs="1" />
+                    <!-- ImpPriceDeclaration -->
+                    <!-- Invoice No -->
+                    <xs:element name="InvoiceNo"              type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Invoice Date -->
+                    <xs:element name="InvoiceDate"            type="xs:dateTime" minOccurs="1" maxOccurs="1" />
+                    <!-- Contract No -->
+                    <xs:element name="ContractNo"             type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Contract Date -->
+                    <xs:element name="ContractDate"           type="xs:dateTime" minOccurs="1" maxOccurs="1" />
+                    <!-- Contract Value(US) -->
+                    <xs:element name="ContractValueUS"        type="xs:decimal"  minOccurs="1" maxOccurs="1" />
+                    <!-- Delivery Condition Type Code -->
+                    <xs:element name="DeliveryConditionType"  type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Delivery Condition Others Description -->
+                    <xs:element name="DeliveryConditionOther" type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Natual Transaction Code -->
+                    <xs:element name="NaturalTransactionCode"  type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Natual Transaction Others Description -->
+                    <xs:element name="NaturalTransactionOther" type="xs:string"   minOccurs="0" maxOccurs="1" />
+                    <!-- Resolution No -->
+                    <xs:element name="ResolutionNo"           type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Resolution Date -->
+                    <xs:element name="ResolutionDate"         type="xs:dateTime" minOccurs="1" maxOccurs="1" />
+                    <!-- ForeignSupplier Code-->
+                    <xs:element name="ForeignSupplierCode"    type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Supplier Condition Type Code -->
+                    <xs:element name="SupplierConditionType"  type="xs:string"   minOccurs="1" maxOccurs="1" />
+                    <!-- Intermediary YN -->
+                    <xs:element name="IntermediaryYN"         type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <!-- Intermediary Type Code -->
+                    <xs:element name="IntermediaryType"       type="xs:string"   minOccurs="0" maxOccurs="1" />
+                    <!-- Intermediary Code -->
+                    <xs:element name="IntermediaryCode"       type="xs:string"   minOccurs="0" maxOccurs="1" />
+                    <!-- Intermediary Code -->
+                    <xs:element name="IntermediaryName"       type="xs:string"   minOccurs="0" maxOccurs="1" />
+                    <!-- Intermediary Code -->
+                    <xs:element name="IntermediaryNationality" type="xs:string"   minOccurs="0" maxOccurs="1" />
+                    <!-- ImpPriceDeclarationQuestion -->
+                    <xs:element name="ConditionA"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionB"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionC"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionD"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionE"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionF"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionG"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionH"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionI"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ConditionJ"             type="xs:boolean"  minOccurs="0" maxOccurs="1" />
+                    <xs:element name="ValueA1"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueA2"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumA"              type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumB"              type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC1"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC2"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC3"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC4"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC5"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumC"              type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumABC"            type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueA1_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueA2_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumA_Aduana"       type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumB_Aduana"       type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC1_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC2_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC3_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC4_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueC5_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumC_Aduana"       type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueSumABC_Aduana"     type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="IsTemporaryYN"          type="xs:boolean"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB1"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB2"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB3"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB4"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB5"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB6"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB7"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB8"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB9"                type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB10"               type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB1_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB2_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB3_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB4_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB5_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB6_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB7_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB8_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB9_Aduana"         type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="ValueB10_Aduana"        type="xs:decimal"  minOccurs="0" maxOccurs="1" default="0" />
+                    <!-- Price Declaration Product List -->
+                    <xs:element name="ImpPriceDeclarationProduct" minOccurs="0" maxOccurs="unbounded" msdata:Locale="es-DO">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <!-- HSCode -->
+                          <xs:element name="HSCode"             type="xs:string"  minOccurs="1" maxOccurs="1" />
+                          <!-- Brand Code -->
+                          <xs:element name="BrandCode"          type="xs:string"  minOccurs="0" maxOccurs="1" />
+                          <!-- Brand Name -->
+                          <xs:element name="BrandName"          type="xs:string"  minOccurs="1" maxOccurs="1" />
+                          <!-- Model Code -->
+                          <xs:element name="ModelCode"          type="xs:string"  minOccurs="0" maxOccurs="1" />
+                          <!-- Model Name -->
+                          <xs:element name="ModelName"          type="xs:string"  minOccurs="1" maxOccurs="1" />
+                          <!-- Product Code -->
+                          <xs:element name="ProductCode"        type="xs:string"  minOccurs="0" maxOccurs="1" />
+                          <!-- Product Name -->
+                          <xs:element name="ProductName"        type="xs:string"  minOccurs="1" maxOccurs="1" />
+                          <!-- Origin Country Code -->
+                          <xs:element name="OriginCountry"      type="xs:string"  minOccurs="1" maxOccurs="1" />
+                          <!-- Unit Code -->
+                          <xs:element name="UnitCode"           type="xs:string"  minOccurs="1" maxOccurs="1" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <!-- Product information -->
+        
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

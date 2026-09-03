@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Notification } from '../types';
 
 const SEED_NOTIFICATIONS: Notification[] = [
@@ -13,31 +14,31 @@ interface NotificationState {
   add: (n: Omit<Notification, 'id' | 'createdAt'>) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
+  resetToSeed: () => void;
 }
 
-export const useNotificationStore = create<NotificationState>((set, get) => ({
-  notifications: SEED_NOTIFICATIONS,
+export const useNotificationStore = create<NotificationState>()(
+  persist(
+    (set, get) => ({
+      notifications: SEED_NOTIFICATIONS,
 
-  unreadCount: () => get().notifications.filter((n) => !n.read).length,
+      unreadCount: () => get().notifications.filter((n) => !n.read).length,
 
-  add: (data) => {
-    const n: Notification = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    set((s) => ({ notifications: [n, ...s.notifications] }));
-  },
+      add: (data) => {
+        const n: Notification = { ...data, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+        set((s) => ({ notifications: [n, ...s.notifications] }));
+      },
 
-  markRead: (id) => {
-    set((s) => ({
-      notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    }));
-  },
+      markRead: (id) => {
+        set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) }));
+      },
 
-  markAllRead: () => {
-    set((s) => ({
-      notifications: s.notifications.map((n) => ({ ...n, read: true })),
-    }));
-  },
-}));
+      markAllRead: () => {
+        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) }));
+      },
+
+      resetToSeed: () => set({ notifications: SEED_NOTIFICATIONS }),
+    }),
+    { name: 'aduana-notifications', partialize: (s) => ({ notifications: s.notifications }) },
+  ),
+);

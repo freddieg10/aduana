@@ -1,200 +1,99 @@
-import { useState, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Button, Card, CardContent, Typography, Alert,
-  Table, TableBody, TableCell, TableHead, TableRow, Divider,
+  Alert, Box, Button, Card, CardContent, Chip, Divider, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Typography, Paper, Stack,
 } from '@mui/material';
-import { Upload, Download } from '@mui/icons-material';
+import { Upload, Download, Description } from '@mui/icons-material';
 import { DataGrid, type GridColDef, type GridRowSelectionModel } from '@mui/x-data-grid';
-import * as XLSX from 'xlsx';
-import { useExpedientesStore, computeProgress } from '../../store/expedientesStore';
-import { ExpedienteStatus } from '../../types';
+import { useExpedientesStore } from '../../store/expedientesStore';
 import type { Expediente } from '../../types';
+import { parseWorkbook, rowsToExpedientes, readFileAsArrayBuffer, type ParsedWorkbook } from '../../utils/excel';
+import { buildFullXml, buildSigaXmlFiles, downloadTextFile } from '../../utils/xml';
 
-/* ---------- parsed row from XLSX ---------- */
-interface ParsedRow {
-  reference: string;
-  importadorCodigo: string;
-  importadorNombre: string;
-  docEmbarque: string;
-  paisOrigen: string;
-  codigoPartida: string;
-  descripcion: string;
-  cantidad: number;
-  unidad: string;
-  valorFob: number;
-}
+const PREVIEW_ROWS = 20;
 
-/* ---------- XML builder ---------- */
-function escapeXml(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function buildXml(expedientes: Expediente[]): string {
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<expedientes>\n';
-  for (const exp of expedientes) {
-    xml += `  <expediente reference="${escapeXml(exp.reference)}" status="${exp.status}">\n`;
-    xml += `    <declaracion idSecuencia="${escapeXml(exp.declaracion.idSecuencia)}" noDeclaracion="${escapeXml(exp.declaracion.noDeclaracion)}" tipoDespacho="${escapeXml(exp.declaracion.tipoDespacho)}" eta="${exp.declaracion.eta}" docEmbarque="${escapeXml(exp.declaracion.docEmbarque)}" puertoEntrada="${escapeXml(exp.declaracion.puertoEntrada)}" paisProcedencia="${escapeXml(exp.declaracion.paisProcedenciaNombre)}" />\n`;
-    xml += `    <importador codigo="${escapeXml(exp.importador.codigo)}" nombre="${escapeXml(exp.importador.nombre)}" />\n`;
-    xml += `    <agenteAduanal codigo="${escapeXml(exp.agenteAduanal.codigo)}" nombre="${escapeXml(exp.agenteAduanal.nombre)}" />\n`;
-    xml += `    <valores tasaCambio="${exp.valores.tasaCambio}" valorFobTotal="${exp.valores.valorFobTotal}" seguro="${exp.valores.seguro}" flete="${exp.valores.flete}" otros="${exp.valores.otros}" valorCifTotal="${exp.valores.valorCifTotal}" />\n`;
-    xml += `    <regimenAduanero codigo="${exp.regimenAduanero.codigo}" nombre="${escapeXml(exp.regimenAduanero.nombre)}" />\n`;
-    xml += `    <partidas>\n`;
-    for (const p of exp.partidas) {
-      xml += `      <partida codigo="${escapeXml(p.codigoPartida)}" descripcion="${escapeXml(p.descripcion)}" cantidad="${p.cantidad}" unidad="${escapeXml(p.unidad)}" paisOrigen="${escapeXml(p.paisOrigen)}" valorFob="${p.valorFob}" unitario="${p.unitario}" factura="${escapeXml(p.facturaDva)}" />\n`;
-    }
-    xml += `    </partidas>\n`;
-    xml += `    <checklist progress="${computeProgress(exp.checklist)}%">\n`;
-    for (const c of exp.checklist) {
-      xml += `      <item label="${escapeXml(c.label)}" completed="${c.completed}" />\n`;
-    }
-    xml += `    </checklist>\n`;
-    if (exp.notes) xml += `    <notes>${escapeXml(exp.notes)}</notes>\n`;
-    xml += `  </expediente>\n`;
-  }
-  xml += '</expedientes>';
-  return xml;
-}
-
-/* ---------- Component ---------- */
 export default function ImportExportPage() {
   const { t } = useTranslation();
   const expedientes = useExpedientesStore((s) => s.expedientes);
   const bulkAdd = useExpedientesStore((s) => s.bulkAdd);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [parsed, setParsed] = useState<ParsedWorkbook | null>(null);
+  const [fileName, setFileName] = useState('');
   const [importError, setImportError] = useState('');
-  const [importSuccess, setImportSuccess] = useState(false);
-  const [exportSuccess, setExportSuccess] = useState(false);
+  const [importSuccess, setImportSuccess] = useState<number | null>(null);
+  const [exportSuccess, setExportSuccess] = useState('');
   const [selectedIds, setSelectedIds] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     setImportError('');
-    setImportSuccess(false);
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const wb = XLSX.read(ev.target?.result, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
-        const rows: ParsedRow[] = data.map((row) => ({
-          reference: String(row['reference'] || row['Referencia'] || ''),
-          importadorCodigo: String(row['importadorCodigo'] || row['Código Importador'] || ''),
-          importadorNombre: String(row['importadorNombre'] || row['Importador'] || ''),
-          docEmbarque: String(row['docEmbarque'] || row['Doc Embarque'] || ''),
-          paisOrigen: String(row['paisOrigen'] || row['País Origen'] || ''),
-          codigoPartida: String(row['codigoPartida'] || row['Partida'] || ''),
-          descripcion: String(row['descripcion'] || row['Descripción'] || ''),
-          cantidad: Number(row['cantidad'] || row['Cantidad'] || 0),
-          unidad: String(row['unidad'] || row['Unidad'] || 'KILOGRAMOS'),
-          valorFob: Number(row['valorFob'] || row['Valor FOB'] || 0),
-        }));
-        setParsedRows(rows);
-      } catch {
-        setImportError(t('importExport.parseError'));
+    setImportSuccess(null);
+    setFileName(file.name);
+    try {
+      const buf = await readFileAsArrayBuffer(file);
+      const result = parseWorkbook(buf);
+      if (result.rows.length === 0) {
+        setImportError(t('importExport.noRows'));
+        setParsed(null);
+        return;
       }
-    };
-    reader.readAsArrayBuffer(file);
+      setParsed(result);
+    } catch {
+      setImportError(t('importExport.parseError'));
+      setParsed(null);
+    }
   };
+
+  const pendingExpedientes = useMemo(() => (parsed ? rowsToExpedientes(parsed.rows) : []), [parsed]);
 
   const confirmImport = () => {
-    const grouped = new Map<string, ParsedRow[]>();
-    parsedRows.forEach((r) => {
-      const key = r.reference || crypto.randomUUID();
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key)!.push(r);
-    });
-
-    const DEFAULT_CHECKLIST = [
-      'Documentos de importación recibidos',
-      'Factura comercial verificada',
-      'BL / Doc. Embarque recibido y revisado',
-      'Clasificación arancelaria asignada',
-      'Permisos y certificados verificados',
-      'Declaración aduanera generada',
-      'Pago de impuestos realizado',
-      'Despacho aduanal completado',
-    ];
-
-    const newExps = Array.from(grouped.entries()).map(([ref, rows]) => {
-      const first = rows[0];
-      return {
-        reference: ref,
-        tipoExpediente: 'importacion' as const,
-        status: ExpedienteStatus.Registrado,
-        checklist: DEFAULT_CHECKLIST.map((label) => ({ id: crypto.randomUUID(), label, completed: false, completedAt: null })),
-        declaracion: {
-          idSecuencia: '', eta: '', tipoDespacho: '',
-          administracionCodigo: '', administracionNombre: '',
-          noDeclaracion: ref, docEmbarque: first.docEmbarque,
-          depositoDestino: '', puertoEntrada: '',
-          paisProcedenciaCodigo: '', paisProcedenciaNombre: first.paisOrigen,
-          facturaComercialNo: '',
-        },
-        importador: { codigo: first.importadorCodigo, nombre: first.importadorNombre },
-        agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
-        consignatario: { codigo: first.importadorCodigo, nombre: first.importadorNombre },
-        compradorExportacion: { codigo: '0', nombre: '' },
-        suplidores: [],
-        documentos: [],
-        contenedores: [],
-        tipoCarga: 'contenedores' as const,
-        valores: {
-          tasaCambio: 65,
-          valorFobTotal: rows.reduce((s, r) => s + r.valorFob, 0),
-          seguro: 0, flete: 0, otros: 0,
-          valorCifTotal: rows.reduce((s, r) => s + r.valorFob, 0),
-        },
-        regimenAduanero: { codigo: '1', nombre: 'DESPACHO A CONSUMO', acuerdo: '' },
-        pesoMercancia: { codigoMercancia: '', pesoBrutoKg: 0, pesoNetoKg: 0 },
-        partidas: rows.map((r) => ({
-          id: crypto.randomUUID(),
-          codigoPartida: r.codigoPartida,
-          descripcion: r.descripcion,
-          organico: false,
-          cantidad: r.cantidad,
-          unidad: r.unidad,
-          paisOrigen: r.paisOrigen,
-          valorFob: r.valorFob,
-          unitario: r.cantidad > 0 ? r.valorFob / r.cantidad : 0,
-          facturaDva: '',
-        })),
-        notes: '',
-        assignedUserId: '2',
-      };
-    });
-
-    bulkAdd(newExps);
-    setParsedRows([]);
-    setImportSuccess(true);
+    if (!parsed) return;
+    bulkAdd(pendingExpedientes);
+    setImportSuccess(pendingExpedientes.length);
+    setParsed(null);
+    setFileName('');
   };
 
-  const handleExport = () => {
-    const toExport = expedientes.filter((e) => selectedIds.ids.has(e.id));
+  const selectedExpedientes = () => expedientes.filter((e) => selectedIds.ids.has(e.id));
+  const stamp = () => new Date().toISOString().slice(0, 10);
+
+  const handleExportFull = () => {
+    const toExport = selectedExpedientes();
     if (toExport.length === 0) return;
-    const xml = buildXml(toExport);
-    const blob = new Blob([xml], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `expedientes_${new Date().toISOString().slice(0, 10)}.xml`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setExportSuccess(true);
-    setTimeout(() => setExportSuccess(false), 3000);
+    downloadTextFile(buildFullXml(toExport), `expedientes_${stamp()}.xml`);
+    flashExport(t('importExport.exportSuccess'));
   };
 
-  const exportColumns: GridColDef[] = [
+  const handleExportSiga = () => {
+    const toExport = selectedExpedientes();
+    if (toExport.length === 0) return;
+    // SIGA has separate ImportDUA / ExportDUA schemas, so a mixed selection yields one file per tipo.
+    for (const file of buildSigaXmlFiles(toExport)) {
+      const root = file.tipo === 'importacion' ? 'ImportDUA' : 'ExportDUA';
+      const single = toExport.filter((e) => e.tipoExpediente === file.tipo);
+      const name = file.count === 1
+        ? `${root}_${(single[0].declaracion.noDeclaracion || single[0].reference).replace(/[^\w-]+/g, '_')}.xml`
+        : `${root}_${stamp()}.xml`;
+      downloadTextFile(file.xml, name);
+    }
+    flashExport(t('importExport.exportSigaSuccess'));
+  };
+
+  const flashExport = (msg: string) => {
+    setExportSuccess(msg);
+    setTimeout(() => setExportSuccess(''), 3000);
+  };
+
+  const exportColumns: GridColDef<Expediente>[] = [
     { field: 'reference', headerName: t('expediente.reference'), flex: 1 },
-    {
-      field: 'importadorNombre', headerName: t('expediente.client'), flex: 1.5,
-      valueGetter: (_value, row) => row.importador.nombre,
-    },
-    { field: 'status', headerName: t('expediente.status'), width: 120 },
+    { field: 'importadorNombre', headerName: t('expediente.client'), flex: 1.5, valueGetter: (_v, row) => row.importador.nombre },
+    { field: 'noDeclaracion', headerName: t('detail.noDeclaracion'), width: 170, valueGetter: (_v, row) => row.declaracion.noDeclaracion },
+    { field: 'status', headerName: t('expediente.status'), width: 150, valueFormatter: (v: string) => t(`status.${v}`) },
+    { field: 'partidas', headerName: t('detail.renglones'), width: 110, valueGetter: (_v, row) => row.partidas.length },
   ];
 
   return (
@@ -205,45 +104,79 @@ export default function ImportExportPage() {
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>{t('importExport.importXlsx')}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{t('importExport.importHint')}</Typography>
 
           {importError && <Alert severity="error" sx={{ mb: 2 }}>{importError}</Alert>}
-          {importSuccess && <Alert severity="success" sx={{ mb: 2 }}>{t('importExport.importSuccess')}</Alert>}
+          {importSuccess !== null && <Alert severity="success" sx={{ mb: 2 }}>{t('importExport.importSuccessCount', { count: importSuccess })}</Alert>}
 
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={handleFileUpload} />
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={handleFileUpload} />
           <Button variant="outlined" startIcon={<Upload />} onClick={() => fileRef.current?.click()}>
             {t('importExport.uploadFile')}
           </Button>
+          {fileName && <Chip icon={<Description />} label={fileName} sx={{ ml: 2 }} />}
 
-          {parsedRows.length > 0 && (
+          {parsed && (
             <Box sx={{ mt: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>{t('importExport.preview')} ({parsedRows.length} filas)</Typography>
-              <Table size="small" sx={{ mb: 2 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Referencia</TableCell>
-                    <TableCell>Importador</TableCell>
-                    <TableCell>Doc. Embarque</TableCell>
-                    <TableCell>Partida</TableCell>
-                    <TableCell>Descripción</TableCell>
-                    <TableCell align="right">Cantidad</TableCell>
-                    <TableCell align="right">Valor FOB</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {parsedRows.slice(0, 20).map((row, i) => (
-                    <TableRow key={i}>
-                      <TableCell>{row.reference}</TableCell>
-                      <TableCell>{row.importadorNombre}</TableCell>
-                      <TableCell>{row.docEmbarque}</TableCell>
-                      <TableCell>{row.codigoPartida}</TableCell>
-                      <TableCell>{row.descripcion}</TableCell>
-                      <TableCell align="right">{row.cantidad}</TableCell>
-                      <TableCell align="right">{row.valorFob}</TableCell>
+              <Stack direction="row" spacing={3} sx={{ mb: 2, flexWrap: 'wrap' }}>
+                <Typography variant="body2"><b>{t('importExport.sheets')}:</b> {parsed.sheets.join(', ')}</Typography>
+                <Typography variant="body2"><b>{t('importExport.rowsFound')}:</b> {parsed.rows.length}</Typography>
+                <Typography variant="body2"><b>{t('importExport.expedientesToCreate')}:</b> {pendingExpedientes.length}</Typography>
+              </Stack>
+
+              <Typography variant="subtitle2" gutterBottom>{t('importExport.recognizedColumns')}</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {parsed.headers.map((h) => {
+                  const key = parsed.mapping[h];
+                  return (
+                    <Chip
+                      key={h}
+                      size="small"
+                      color={key ? 'success' : 'default'}
+                      variant={key ? 'filled' : 'outlined'}
+                      label={key ? `${h} → ${key}` : `${h} → ?`}
+                    />
+                  );
+                })}
+              </Box>
+              {parsed.unmappedHeaders.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  {t('importExport.unmappedColumns', { cols: parsed.unmappedHeaders.join(', ') })}
+                </Alert>
+              )}
+
+              <Typography variant="subtitle1" gutterBottom>
+                {t('importExport.preview')} ({Math.min(parsed.rows.length, PREVIEW_ROWS)} / {parsed.rows.length})
+              </Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, maxHeight: 420 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>#</TableCell>
+                      {parsed.headers.map((h) => (
+                        <TableCell key={h} sx={{ whiteSpace: 'nowrap', fontWeight: 700, color: parsed.mapping[h] ? 'text.primary' : 'text.disabled' }}>{h}</TableCell>
+                      ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <Button variant="contained" onClick={confirmImport}>{t('importExport.confirmImport')}</Button>
+                  </TableHead>
+                  <TableBody>
+                    {parsed.rows.slice(0, PREVIEW_ROWS).map((row, i) => (
+                      <TableRow key={i}>
+                        <TableCell sx={{ color: 'text.secondary' }}>{row.sheet !== parsed.sheets[0] ? `${row.sheet}:` : ''}{row.rowNumber}</TableCell>
+                        {parsed.headers.map((h) => {
+                          const key = parsed.mapping[h];
+                          const v = key ? row.fields[key] : row.extra[h];
+                          return <TableCell key={h} sx={{ whiteSpace: 'nowrap' }}>{v === undefined || v === null ? '' : String(v)}</TableCell>;
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button variant="contained" onClick={confirmImport} disabled={pendingExpedientes.length === 0}>
+                  {t('importExport.confirmImport')} ({pendingExpedientes.length})
+                </Button>
+                <Button variant="text" onClick={() => { setParsed(null); setFileName(''); }}>{t('common.cancel')}</Button>
+              </Box>
             </Box>
           )}
         </CardContent>
@@ -257,7 +190,7 @@ export default function ImportExportPage() {
           <Typography variant="h6" gutterBottom>{t('importExport.exportXml')}</Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom>{t('importExport.selectExpedientes')}</Typography>
 
-          {exportSuccess && <Alert severity="success" sx={{ mb: 2 }}>{t('importExport.exportSuccess')}</Alert>}
+          {exportSuccess && <Alert severity="success" sx={{ mb: 2 }}>{exportSuccess}</Alert>}
 
           <DataGrid
             rows={expedientes}
@@ -266,14 +199,20 @@ export default function ImportExportPage() {
             checkboxSelection
             onRowSelectionModelChange={(model) => setSelectedIds(model)}
             rowSelectionModel={selectedIds}
-            pageSizeOptions={[10]}
+            pageSizeOptions={[10, 25]}
             initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
             sx={{ mb: 2 }}
           />
 
-          <Button variant="contained" startIcon={<Download />} onClick={handleExport} disabled={selectedIds.ids.size === 0}>
-            {t('importExport.exportSelected')} ({selectedIds.ids.size})
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Button variant="contained" startIcon={<Download />} onClick={handleExportFull} disabled={selectedIds.ids.size === 0}>
+              {t('importExport.exportFullXml')} ({selectedIds.ids.size})
+            </Button>
+            <Button variant="contained" color="secondary" startIcon={<Download />} onClick={handleExportSiga} disabled={selectedIds.ids.size === 0}>
+              {t('importExport.exportSigaXml')} ({selectedIds.ids.size})
+            </Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>{t('importExport.sigaNote')}</Typography>
         </CardContent>
       </Card>
     </Box>

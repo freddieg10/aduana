@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" standalone="yes"?>
+<xs:schema id="ExportConsolidatedMaster" 
+	   targetNamespace="http://aduanas.gob.do/XSD/ExportCargo/ExportConsolidatedMaster.xsd" 
+	   xmlns:mstns="http://aduanas.gob.do/XSD/ExportCargo/ExportConsolidatedMaster.xsd" 
+	   xmlns="http://aduanas.gob.do/XSD/ExportCargo/ExportConsolidatedMaster.xsd" 
+	   xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+	   xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
+	   >
+  <xs:element name="ExportConsolidatedMaster" msdata:IsDataSet="true" msdata:Locale="es-DO">
+    <xs:complexType>
+      <xs:choice minOccurs="1" maxOccurs="1">
+        <xs:element name="ConsolidatedBL" msdata:Locale="es-DO">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="ManifestNo" type="xs:string" minOccurs="1"/>
+              <xs:element name="BLNo" type="xs:string" minOccurs="1"/>
+              <xs:element name="ManifestBL" msdata:Locale="es-DO" minOccurs="1" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="HouseBLNo" type="xs:string" minOccurs="1"/>
+                    <xs:element name="TransitType" type="xs:string" minOccurs="1"/>
+                    <xs:element name="UnloadingPortCode" type="xs:string" minOccurs="1"/>
+                    <xs:element name="GoodsName" type="xs:string" minOccurs="1"/>
+                    <xs:element name="PackageUnitCode" type="xs:string" minOccurs="1"/>
+                    <xs:element name="PackageQty" type="xs:decimal" minOccurs="1"/>
+                    <xs:element name="GrossWeight" type="xs:decimal" minOccurs="1"/>
+                    <xs:element name="Value" type="xs:decimal" minOccurs="0" />
+                    <xs:element name="FlightCharge" type="xs:decimal" minOccurs="0" />
+                    <xs:element name="Volume" type="xs:decimal" minOccurs="0" />
+                    <xs:element name="ExpressType" type="xs:string" minOccurs="0"/>
+                    <xs:element name="RefCargoControlNo" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorType" type="xs:string" minOccurs="1" />
+                    <xs:element name="ConsignorCode" type="xs:string" minOccurs="1" />
+                    <xs:element name="ConsignorTel" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorCountryCode" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsignorName" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsignorDocumentType" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsignorDocumentNo" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsignorEmail" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorFax" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorZipCode" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorStreet" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorZoneName" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorCity" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeType" type="xs:string" minOccurs="1" />
+                    <xs:element name="ConsigneeCode" type="xs:string" minOccurs="1" />
+                    <xs:element name="ConsigneeTel" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeCountryCode" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsigneeName" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsigneeDocumentType" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsigneeDocumentNo" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ConsigneeEmail" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeFax" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeZipCode" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeStreet" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeZoneName" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeCity" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyType" type="xs:string" minOccurs="1" />
+                    <xs:element name="NotifyCode" type="xs:string" minOccurs="1" />
+                    <xs:element name="NotifyCountryCode" type="xs:string" minOccurs="1"/>
+                    <xs:element name="NotifyDocumentType" type="xs:string" minOccurs="1"/>
+                    <xs:element name="NotifyDocumentNo" type="xs:string" minOccurs="1"/>
+                    <xs:element name="NotifyName" type="xs:string" minOccurs="1"/>
+                    <xs:element name="NotifyEmail" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyTel" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyFax" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyZipCode" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyStreet" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyZoneName" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyCity" type="xs:string" minOccurs="0" />
+                    <xs:element name="ManifestVehicle" msdata:Locale="es-DO" minOccurs="0" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="HouseBLNo" type="xs:string" minOccurs="1"/>
+                          <xs:element name="ChassisNo" type="xs:string" minOccurs="1"/>
+                          <xs:element name="GrossWeight" type="xs:decimal" minOccurs="1"/>
+                          <xs:element name="CarYear" type="xs:string" minOccurs="1"/>
+                          <xs:element name="BrandName" type="xs:string" minOccurs="1"/>
+                          <xs:element name="ModelName" type="xs:string" minOccurs="1"/>
+                          <xs:element name="Color" type="xs:string" minOccurs="0" />
+                          <xs:element name="Options" type="xs:string" minOccurs="0" />
+                          <xs:element name="VehicleType" type="xs:string" minOccurs="1"/>
+                          <xs:element name="Displacement" type="xs:decimal" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="ManifestBLDUA" msdata:Locale="es-DO" minOccurs="0" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="HouseBLNo" type="xs:string" minOccurs="1"/>
+                          <xs:element name="RefBizDocNo" type="xs:string" minOccurs="1"/>
+                          <xs:element name="PackageUnitCode" type="xs:string" minOccurs="1"/>
+                          <xs:element name="PackageQty" type="xs:decimal" minOccurs="1"/>
+                          <xs:element name="GrossWeight" type="xs:decimal" minOccurs="1"/>
+                          <xs:element name="SplitYN" type="xs:string" minOccurs="1"/>
+                          <xs:element name="SplitSeq" type="xs:int" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="ContainerBL" msdata:Locale="es-DO" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="HouseBLNo" type="xs:string" minOccurs="1"/>
+                    <xs:element name="ContainerNo" type="xs:string" minOccurs="1"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

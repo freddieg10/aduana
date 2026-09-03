@@ -1,73 +1,44 @@
-# React + TypeScript + Vite
+# Aduana
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Case-management app for a Dominican Republic customs brokerage. Tracks **expedientes** (customs
+files) through the DGA clearance lifecycle, with a checklist per file, an observation timeline,
+Excel import, XML export (including a DGA SIGA layout), master data for clients and suppliers,
+and a read-only client portal.
 
-Currently, two official plugins are available:
+Proof of concept: everything runs in the browser. There is no backend; data persists in
+`localStorage`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # http://localhost:5173/aduana/
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Demo logins:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Role | Email | Password |
+|---|---|---|
+| admin | admin@aduana.com | admin123 |
+| agent | agente@aduana.com | agente123 |
+| client | cliente@aduana.com | cliente123 |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Scripts
+
+```bash
+npm run build      # type-check + production build to dist/
+npm run lint
+npm test           # vitest, unit tests under src/**/*.test.ts
+npm run preview    # serve dist/
 ```
+
+## Deploy
+
+Pushing to `dev` runs the GitHub Actions workflow that builds and publishes `dist/` to GitHub
+Pages. The app is served under `/aduana/` and uses hash routing for that reason.
+
+## Docs
+
+- [CLAUDE.md](CLAUDE.md) — architecture and conventions for working in the code.
+- [KNOWLEDGE.md](KNOWLEDGE.md) — domain glossary, roadmap, decisions, open questions.
+- [docs/CLIENT_PORTAL.md](docs/CLIENT_PORTAL.md) — client portal design.

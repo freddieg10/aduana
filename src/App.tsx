@@ -12,6 +12,9 @@ import ExpedienteDetailPage from "./features/expedientes/ExpedienteDetailPage";
 import ExpedienteCreatePage from "./features/expedientes/ExpedienteCreatePage";
 import ImportExportPage from "./features/import-export/ImportExportPage";
 import ReportsPage from "./features/reports/ReportsPage";
+import RelacionadosPage from "./features/relacionados/RelacionadosPage";
+import ClientPortalPage from "./features/portal/ClientPortalPage";
+import ClientPortalDetailPage from "./features/portal/ClientPortalDetailPage";
 
 const createAppTheme = (mode: PaletteMode) =>
   createTheme({
@@ -198,22 +201,28 @@ function App() {
       <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
+
+          {/* Staff (admin / agent) */}
+          <Route element={<ProtectedRoute roles={['admin', 'agent']} />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/expedientes" element={<ExpedienteListPage />} />
-              <Route
-                path="/expedientes/new"
-                element={<ExpedienteCreatePage />}
-              />
-              <Route
-                path="/expedientes/:id"
-                element={<ExpedienteDetailPage />}
-              />
+              <Route path="/expedientes/new" element={<ExpedienteCreatePage />} />
+              <Route path="/expedientes/:id" element={<ExpedienteDetailPage />} />
+              <Route path="/relacionados" element={<RelacionadosPage />} />
               <Route path="/import-export" element={<ImportExportPage />} />
               <Route path="/reports" element={<ReportsPage />} />
             </Route>
           </Route>
+
+          {/* Client portal */}
+          <Route element={<ProtectedRoute roles={['client']} />}>
+            <Route element={<Layout />}>
+              <Route path="/portal" element={<ClientPortalPage />} />
+              <Route path="/portal/:id" element={<ClientPortalDetailPage />} />
+            </Route>
+          </Route>
+
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </HashRouter>

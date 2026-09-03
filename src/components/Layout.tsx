@@ -14,6 +14,12 @@ import {
   Toolbar,
   Typography,
   Badge,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Menu,
   MenuItem,
   Divider,
@@ -32,20 +38,27 @@ import {
   Logout,
   DarkMode,
   LightMode,
+  People,
+  Inventory2,
 } from "@mui/icons-material";
 import { useAuthStore } from "../store/authStore";
 import { useNotificationStore } from "../store/notificationStore";
 import { useExpedientesStore } from "../store/expedientesStore";
 import { useThemeStore } from "../store/themeStore";
+import type { UserRole } from "../types";
 
 const DRAWER_WIDTH = 280;
 
-const NAV_ITEMS = [
-  { key: "dashboard", path: "/dashboard", icon: <Dashboard /> },
-  { key: "expedientes", path: "/expedientes", icon: <Description /> },
-  { key: "reports", path: "/reports", icon: <Assessment /> },
-  { key: "importExport", path: "/import-export", icon: <ImportExport /> },
-] as const;
+const STAFF: UserRole[] = ["admin", "agent"];
+
+const NAV_ITEMS: { key: string; path: string; icon: React.ReactNode; roles: UserRole[] }[] = [
+  { key: "dashboard", path: "/dashboard", icon: <Dashboard />, roles: STAFF },
+  { key: "expedientes", path: "/expedientes", icon: <Description />, roles: STAFF },
+  { key: "relacionados", path: "/relacionados", icon: <People />, roles: STAFF },
+  { key: "reports", path: "/reports", icon: <Assessment />, roles: STAFF },
+  { key: "importExport", path: "/import-export", icon: <ImportExport />, roles: STAFF },
+  { key: "portal", path: "/portal", icon: <Inventory2 />, roles: ["client"] },
+];
 
 export default function Layout() {
   const { t, i18n } = useTranslation();
@@ -64,8 +77,14 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
+  const isClient = user?.role === "client";
+  const navItems = NAV_ITEMS.filter((n) => user && n.roles.includes(user.role));
+
+  /** Logging out wipes the data persisted for the session, so it is confirmed first. */
   const handleLogout = () => {
+    setLogoutConfirmOpen(false);
     logout();
     navigate("/login");
   };
@@ -79,7 +98,7 @@ export default function Layout() {
       </Toolbar>
       <Divider sx={{ mb: 2, borderStyle: "dashed" }} />
       <List sx={{ px: 2 }}>
-        {NAV_ITEMS.map(({ key, path, icon }) => (
+        {navItems.map(({ key, path, icon }) => (
           <ListItemButton
             key={key}
             selected={location.pathname.startsWith(path)}
@@ -141,7 +160,7 @@ export default function Layout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-            {t("app.title")}
+            {isClient ? t("portal.title") : t("app.title")}
           </Typography>
 
           {/* Language toggle */}
@@ -169,73 +188,77 @@ export default function Layout() {
             </IconButton>
           </Tooltip>
 
-          {/* Notifications */}
-          <Tooltip title={t("notifications.title")}>
-            <IconButton
-              color="inherit"
-              onClick={(e) => setNotifAnchor(e.currentTarget)}
-            >
-              <Badge badgeContent={unreadCount} color="error">
-                <Notifications />
-              </Badge>
-            </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={notifAnchor}
-            open={Boolean(notifAnchor)}
-            onClose={() => setNotifAnchor(null)}
-            slotProps={{ paper: { sx: { maxWidth: 360, maxHeight: 400 } } }}
-          >
-            <MenuItem dense disabled>
-              <Typography variant="subtitle2">
-                {t("notifications.title")}
-              </Typography>
-            </MenuItem>
-            <Divider />
-            {notifications.length === 0 && (
-              <MenuItem disabled>{t("notifications.noNotifications")}</MenuItem>
-            )}
-            {notifications.slice(0, 8).map((n) => {
-              const exp = getExpById(n.expedienteId);
-              return (
-                <MenuItem
-                  key={n.id}
-                  dense
-                  sx={{ whiteSpace: "normal", opacity: n.read ? 0.6 : 1 }}
-                  onClick={() => {
-                    markRead(n.id);
-                    setNotifAnchor(null);
-                    if (exp) navigate(`/expedientes/${exp.id}`);
-                  }}
+          {/* Notifications (staff only) */}
+          {!isClient && (
+            <>
+              <Tooltip title={t("notifications.title")}>
+                <IconButton
+                  color="inherit"
+                  onClick={(e) => setNotifAnchor(e.currentTarget)}
                 >
-                  <Box>
-                    <Typography variant="body2">{n.message}</Typography>
-                    {exp && (
-                      <Typography variant="caption" color="primary">
-                        {exp.reference} — {exp.importador.nombre}
-                      </Typography>
-                    )}
-                  </Box>
-                </MenuItem>
-              );
-            })}
-            {notifications.length > 0 && (
-              <>
-                <Divider />
-                <MenuItem
-                  dense
-                  onClick={() => {
-                    markAllRead();
-                    setNotifAnchor(null);
-                  }}
-                >
-                  <Typography variant="body2" color="primary">
-                    {t("notifications.markAllRead")}
+                  <Badge badgeContent={unreadCount} color="error">
+                    <Notifications />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={notifAnchor}
+                open={Boolean(notifAnchor)}
+                onClose={() => setNotifAnchor(null)}
+                slotProps={{ paper: { sx: { maxWidth: 360, maxHeight: 400 } } }}
+              >
+                <MenuItem dense disabled>
+                  <Typography variant="subtitle2">
+                    {t("notifications.title")}
                   </Typography>
                 </MenuItem>
-              </>
-            )}
-          </Menu>
+                <Divider />
+                {notifications.length === 0 && (
+                  <MenuItem disabled>{t("notifications.noNotifications")}</MenuItem>
+                )}
+                {notifications.slice(0, 8).map((n) => {
+                  const exp = getExpById(n.expedienteId);
+                  return (
+                    <MenuItem
+                      key={n.id}
+                      dense
+                      sx={{ whiteSpace: "normal", opacity: n.read ? 0.6 : 1 }}
+                      onClick={() => {
+                        markRead(n.id);
+                        setNotifAnchor(null);
+                        if (exp) navigate(`/expedientes/${exp.id}`);
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="body2">{n.message}</Typography>
+                        {exp && (
+                          <Typography variant="caption" color="primary">
+                            {exp.reference} — {exp.importador.nombre}
+                          </Typography>
+                        )}
+                      </Box>
+                    </MenuItem>
+                  );
+                })}
+                {notifications.length > 0 && (
+                  <>
+                    <Divider />
+                    <MenuItem
+                      dense
+                      onClick={() => {
+                        markAllRead();
+                        setNotifAnchor(null);
+                      }}
+                    >
+                      <Typography variant="body2" color="primary">
+                        {t("notifications.markAllRead")}
+                      </Typography>
+                    </MenuItem>
+                  </>
+                )}
+              </Menu>
+            </>
+          )}
 
           {/* User menu */}
           <Tooltip title={user?.name ?? ""}>
@@ -257,7 +280,10 @@ export default function Layout() {
               </Typography>
             </MenuItem>
             <Divider />
-            <MenuItem onClick={handleLogout}>
+            <MenuItem
+              onClick={() => { setUserAnchor(null); setLogoutConfirmOpen(true); }}
+              data-testid="logout"
+            >
               <ListItemIcon>
                 <Logout fontSize="small" />
               </ListItemIcon>
@@ -315,6 +341,19 @@ export default function Layout() {
         <Toolbar />
         <Outlet />
       </Box>
+
+      <Dialog open={logoutConfirmOpen} onClose={() => setLogoutConfirmOpen(false)}>
+        <DialogTitle>{t("auth.logoutTitle")}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{t("auth.logoutWarning")}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogoutConfirmOpen(false)}>{t("common.cancel")}</Button>
+          <Button color="error" variant="contained" onClick={handleLogout} data-testid="logout-confirm">
+            {t("nav.logout")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

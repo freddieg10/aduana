@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" standalone="yes"?>
+<xs:schema id="InternationalManifest"
+           targetNamespace="http://aduanas.gob.do/XSD/ImportCargo/InternationalManifest.xsd"
+		   xmlns:mstns="http://aduanas.gob.do/XSD/ImportCargo/InternationalManifest.xsd" 
+           xmlns="http://aduanas.gob.do/XSD/ImportCargo/InternationalManifest.xsd"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
+           xmlns:msprop="urn:schemas-microsoft-com:xml-msprop"
+           attributeFormDefault="qualified" 
+           elementFormDefault="qualified">
+  <xs:element name="InternationalManifest" msdata:IsDataSet="true" msdata:Locale="es-DO">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Manifest" form="unqualified" msdata:Locale="es-DO">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="AreaCode" form="unqualified" type="xs:string" />
+              <xs:element name="TransportType" form="unqualified" type="xs:string" />
+              <xs:element name="BizCompanyCode" form="unqualified" type="xs:string" />
+              <xs:element name="VesselCode" form="unqualified" type="xs:string" />
+              <xs:element name="VoyageNo" form="unqualified" type="xs:string" />
+              <xs:element name="EmptyYN" form="unqualified" type="xs:string" />
+              <xs:element name="LoadingLocationCode" form="unqualified" type="xs:string" />
+              <xs:element name="UnloadingLocationCode" form="unqualified" type="xs:string" />
+              <xs:element name="ViaEntrance" form="unqualified" type="xs:string" minOccurs="0" />
+              <xs:element name="DepartureDate" form="unqualified" type="xs:dateTime" />
+              <xs:element name="ArrivalDate" form="unqualified" type="xs:dateTime" />
+              <xs:element name="CountryCode" form="unqualified" type="xs:string" />
+              <xs:element name="ManifestBL" form="unqualified" msdata:Locale="es-DO" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="BLNo" form="unqualified" type="xs:string" />
+                    <xs:element name="BLType" form="unqualified" type="xs:string" />
+                    <xs:element name="TransitType" form="unqualified" type="xs:string" />
+                    <xs:element name="LastPortCode" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="LoadingPortCode" form="unqualified" type="xs:string" />
+                    <xs:element name="GoodsName" form="unqualified" type="xs:string" />
+                    <xs:element name="PackageUnitCode" form="unqualified" type="xs:string" />
+                    <xs:element name="PackageQty" form="unqualified" type="xs:decimal" />
+                    <xs:element name="GrossWeight" form="unqualified" type="xs:decimal" />
+                    <xs:element name="Value" form="unqualified" type="xs:decimal" minOccurs="0" />
+                    <xs:element name="FlightCharge" form="unqualified" type="xs:decimal" minOccurs="0" />
+                    <xs:element name="Volume" form="unqualified" type="xs:decimal" minOccurs="0" />
+                    <xs:element name="ExpressType" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsignorType" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorCode" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorTel" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorCountryCode" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsignorName" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsignorDocumentType" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsignorDocumentNo" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsignorEmail" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorFax" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorZipCode" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorStreet" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorZoneName" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsignorCity" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeType" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeCode" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeTel" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeCountryCode" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsigneeName" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsigneeDocumentType" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsigneeDocumentNo" form="unqualified" type="xs:string" />
+                    <xs:element name="ConsigneeEmail" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeFax" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeZipCode" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeStreet" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeZoneName" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ConsigneeCity" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyType" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyCode" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyCountryCode" form="unqualified" type="xs:string" />
+                    <xs:element name="NotifyDocumentType" form="unqualified" type="xs:string" />
+                    <xs:element name="NotifyDocumentNo" form="unqualified" type="xs:string" />
+                    <xs:element name="NotifyName" form="unqualified" type="xs:string" />
+                    <xs:element name="NotifyEmail" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyTel" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyFax" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyZipCode" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyStreet" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyZoneName" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="NotifyCity" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ManifestVehicle" form="unqualified" msdata:Locale="es-DO" minOccurs="0" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="BLNo" form="unqualified" type="xs:string" />
+                          <xs:element name="ChassisNo" form="unqualified" type="xs:string" />
+                          <xs:element name="GrossWeight" form="unqualified" type="xs:decimal" />
+                          <xs:element name="CarYear" form="unqualified" type="xs:string" />
+                          <xs:element name="BrandName" form="unqualified" type="xs:string" />
+                          <xs:element name="ModelName" form="unqualified" type="xs:string" />
+                          <xs:element name="Color" form="unqualified" type="xs:string" minOccurs="0" />
+                          <xs:element name="Options" form="unqualified" type="xs:string" minOccurs="0" />
+                          <xs:element name="VehicleType" form="unqualified" type="xs:string" />
+                          <xs:element name="Displacement" form="unqualified" type="xs:decimal" minOccurs="0" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="ManifestContainer" form="unqualified" msdata:Locale="es-DO" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="ContainerNo" form="unqualified" type="xs:string" />
+                    <xs:element name="PlacaNo" form="unqualified" type="xs:string" minOccurs="0" />
+                    <xs:element name="ContainerType" form="unqualified" type="xs:string" />
+                    <xs:element name="PackageCode" form="unqualified" type="xs:string" />
+                    <xs:element name="Amount" form="unqualified" type="xs:int" />
+                    <xs:element name="GrossWeight" form="unqualified" type="xs:decimal" />
+                    <xs:element name="NetWeight" form="unqualified" type="xs:decimal" />
+                    <xs:element name="SealNo1" form="unqualified" type="xs:string" />
+                    <xs:element name="SealNo2" form="unqualified" type="xs:string" minOccurs="0" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="ContainerBL" form="unqualified" msdata:Locale="es-DO" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="BLNo" form="unqualified" type="xs:string" />
+                    <xs:element name="ContainerNo" form="unqualified" type="xs:string" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
