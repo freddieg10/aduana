@@ -12,6 +12,8 @@ export interface Observacion {
   fecha: string;   // ISO datetime
   usuario: string;
   texto: string;
+  /** Public observations are the only ones the client portal shows. */
+  publica: boolean;
 }
 
 // --- Declaración (Declaration header) ---
@@ -35,6 +37,9 @@ export interface Declaracion {
 
 /** SIGA "Documento" types. Together with the number they identify a party. */
 export type TipoDocumento = 'CED' | 'PAS' | 'RNC' | 'TID';
+
+/** SIGA "Tipo" of a registered supplier (Buscar Información Proveedor). */
+export type TipoEntidadSuplidor = 'Persona' | 'Empresa Proveedora Exterior' | 'Empresa Exportadora';
 
 /** SIGA "Tipo" of a registered party. */
 export type TipoEntidad =
@@ -64,10 +69,12 @@ export interface EntidadAduanal {
   paisDocumento?: string;
 }
 
+/** A supplier as carried on one expediente. `codigo` is the document number. */
 export interface Suplidor {
   codigo: string;
   nombre: string;
   nacionalidad: string;
+  tipoDocumento?: TipoDocumento;
 }
 
 // --- Documents (Listado de Documentos) ---
@@ -121,17 +128,64 @@ export interface PesoMercancia {
 
 // --- Partidas (Line items / tariff lines) — "Renglones" in the UI ---
 
+/** Vehicle detail, only filled for vehicle tariff lines. Maps to the Vehicle* DUA fields. */
+export interface VehiculoPartida {
+  tipo: string;
+  chasis: string;
+  color: string;
+  motor: string;
+  cc: number;
+}
+
+/**
+ * One tariff line. The first block is what the renglones grid shows; `detalle` fields sit
+ * behind the per-row detail dialog (the "ojito") because most lines never need them.
+ * Field names in comments are the ImportDUA.xsd elements they feed.
+ */
 export interface Partida {
   id: string;
-  codigoPartida: string;
-  descripcion: string;
-  organico: boolean;
-  cantidad: number;
-  unidad: string;
-  paisOrigen: string;
-  valorFob: number;
-  unitario: number;
+  codigoPartida: string;        // HSCode
+  codigoProducto: string;       // ProductCode
+  descripcion: string;          // ProductName
+  organico: boolean;            // OrganicYN
+  cantidad: number;             // Qty
+  unidad: string;               // UnitCode
+  paisOrigen: string;           // OriginCountry
+  valorFob: number;             // FOBValue
+  unitario: number;             // derived: valorFob / cantidad
   facturaDva: string;
+
+  // --- detalle ---
+  marca: string;                // BrandName
+  modelo: string;               // ModelName
+  estadoProducto: string;       // ProductStatusCode (IC04-xxx)
+  anio: string;                 // ProductYear
+  pesoKg: number;               // Weight
+  especificacion: string;       // ProductSpecification
+  temporal: boolean;            // TempProductYN
+  certificadoOrigen: boolean;   // CertificateOrignYN
+  certificadoOrigenNo: string;  // CertificateOriginNo
+  gradoAlcohol: number;         // GradeAlcohol
+  precioVentaMenor: number;     // CustomerSalesPrice
+  serial: string;               // ProductSerialNo
+  descripcionAdicional: string; // ProductDescription
+  vehiculo: VehiculoPartida;
+}
+
+/**
+ * Fields that complete the hoja de registro and fill the DUA elements the declaration
+ * header does not cover (transport, manifest, actual arrival).
+ */
+export interface InformacionAdicional {
+  transportistaCodigo: string;    // TransportCompanyCode
+  transportistaNombre: string;
+  transporteNacionalidad: string; // TransportNationality (ISO 3166-1 numeric)
+  medioTransporte: string;        // TransportMethod
+  noViaje: string;                // VoyageNo / no. de viaje o vuelo
+  manifiestoNo: string;           // ManifestNo
+  cargoControlNo: string;         // CargoControlNo
+  fechaLlegadaReal: string;       // EntryDate (YYYY-MM-DD)
+  notasHojaRegistro: string;
 }
 
 // --- Main Expediente ---
@@ -188,6 +242,8 @@ export interface Expediente {
   // Line items
   partidas: Partida[];
 
+  informacionAdicional: InformacionAdicional;
+
   // Staff assignment
   digitador: string;
   gestor: string;
@@ -229,20 +285,43 @@ export interface Cliente {
   pais: string;
 }
 
+/**
+ * A supplier, mirroring SIGA's "Buscar Información Proveedor" form. Same shape as `Cliente`
+ * but with the supplier's own Tipo list; the key is likewise (`tipoDocumento`, `documento`).
+ */
 export interface SuplidorMaestro {
+  id: string;
+  tipo: TipoEntidadSuplidor;
+  tipoDocumento: TipoDocumento;
+  documento: string;
+  nombre: string;
+  email: string;
+  calle: string;
+  ciudad: string;
+  telefono: string;
+  zona: string;
+  fax: string;
+  /** País de Origen — ISO 3166-1 numeric code. */
+  pais: string;
+}
+
+/**
+ * A bonded warehouse / depósito. Feeds `declaracion.depositoDestino`, which SIGA sends as
+ * `DestinationLocationCode`.
+ */
+export interface Deposito {
   id: string;
   codigo: string;
   nombre: string;
-  tid: string;
-  direccion: string;
+  administracionCodigo: string;
+  ciudad: string;
   telefono: string;
-  fax: string;
-  pais: string;       // ISO 3166-1 numeric code
 }
 
 // --- Users / notifications ---
 
-export type UserRole = 'admin' | 'agent' | 'client';
+/** ADMIN = agencia/importador, DIGITADOR = empleado, CLIENTE = acceso por enlace. */
+export type UserRole = 'admin' | 'digitador' | 'cliente';
 
 export interface User {
   id: string;

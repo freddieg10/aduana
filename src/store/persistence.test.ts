@@ -37,7 +37,8 @@ describe('clearPersistedData', () => {
   });
 
   it('lists one storage key per persisted store, and not the theme', () => {
-    expect(PERSISTED_KEYS).toHaveLength(3);
+    expect(PERSISTED_KEYS).toHaveLength(4);
+    expect(PERSISTED_KEYS).toContain('aduana-settings');
     expect(PERSISTED_KEYS).not.toContain('aduana-theme-storage');
   });
 });

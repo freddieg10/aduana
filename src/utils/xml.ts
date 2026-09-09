@@ -2,7 +2,7 @@ import type { Expediente } from '../types';
 import { computeProgress } from './progress';
 import { findCountryByName } from '../data/countries';
 import { findPuerto } from '../data/puertos';
-import { PAIS_RD } from '../data/catalogos';
+import { PAIS_RD, REMARK_ESTANDAR, tipoDespachoCodigo } from '../data/catalogos';
 import { sigaPartyCode } from './documento';
 
 export function escapeXml(s: unknown): string {
@@ -112,26 +112,41 @@ const portCode = (value: string) => findPuerto(value)?.codigo ?? value;
 
 function impDeclaration(e: Expediente, now: Date): string {
   const d = e.declaracion;
+  const ia = e.informacionAdicional;
   const D = 2;
   const products = e.partidas.map((p) => el('ImpDeclarationProduct', {}, [
     el('HSCode', {}, p.codigoPartida, D + 2),
+    el('ProductCode', {}, p.codigoProducto, D + 2),
     el('ProductName', {}, p.descripcion, D + 2),
-    el('BrandName', {}, 'N/A', D + 2),
-    el('ModelName', {}, 'N/A', D + 2),
+    el('BrandName', {}, p.marca || 'N/A', D + 2),
+    el('ModelName', {}, p.modelo || 'N/A', D + 2),
+    el('ProductStatusCode', {}, p.estadoProducto, D + 2),
+    el('ProductYear', {}, p.anio, D + 2),
     el('FOBValue', {}, num(p.valorFob), D + 2),
     el('UnitCode', {}, p.unidad, D + 2),
     el('Qty', {}, String(p.cantidad), D + 2),
     el('QtyPresentation', {}, String(Math.round(p.cantidad)), D + 2),
-    el('TempProductYN', {}, 'false', D + 2),
-    el('CertificateOrignYN', {}, 'false', D + 2),
+    el('Weight', {}, num(p.pesoKg), D + 2),
+    el('ProductSpecification', {}, p.especificacion, D + 2),
+    el('TempProductYN', {}, bool(p.temporal), D + 2),
+    el('CertificateOrignYN', {}, bool(p.certificadoOrigen), D + 2),
+    el('CertificateOriginNo', {}, p.certificadoOrigenNo, D + 2),
     el('OriginCountry', {}, countryCode(p.paisOrigen), D + 2),
     el('OrganicYN', {}, bool(p.organico), D + 2),
-    el('ProductDescription', {}, p.descripcion, D + 2),
+    el('GradeAlcohol', {}, num(p.gradoAlcohol), D + 2),
+    el('CustomerSalesPrice', {}, num(p.precioVentaMenor), D + 2),
+    el('ProductSerialNo', {}, p.serial, D + 2),
+    el('VehicleType', {}, p.vehiculo.tipo, D + 2),
+    el('VehicleChassis', {}, p.vehiculo.chasis, D + 2),
+    el('VehicleColor', {}, p.vehiculo.color, D + 2),
+    el('VehicleMotor', {}, p.vehiculo.motor, D + 2),
+    el('VehicleCC', {}, String(p.vehiculo.cc), D + 2),
+    el('ProductDescription', {}, p.descripcionAdicional || p.descripcion, D + 2),
   ], D + 1));
 
   const suppliers = e.suplidores.map((s) => el('ImpDeclarationSupplier', {}, [
     el('ForeignSupplierName', {}, s.nombre, D + 2),
-    el('ForeignSupplierCode', {}, s.codigo, D + 2),
+    el('ForeignSupplierCode', {}, sigaPartyCode({ codigo: s.codigo, tipoDocumento: s.tipoDocumento ?? 'TID', paisDocumento: countryCode(s.nacionalidad) }), D + 2),
     el('ForeignSupplierNationality', {}, countryCode(s.nacionalidad) || s.nacionalidad, D + 2),
   ], D + 1));
 
@@ -144,22 +159,24 @@ function impDeclaration(e: Expediente, now: Date): string {
 
   return el('ImpDeclaration', {}, [
     el('DeclarationDate', {}, xsDateTime('', now), D),
-    el('ClearanceType', {}, d.tipoDespacho, D),
+    el('ClearanceType', {}, tipoDespachoCodigo(d.tipoDespacho), D),
     el('AreaCode', {}, d.administracionCodigo, D),
     el('FormNo', {}, d.idSecuencia, D),
     el('BLNo', {}, d.docEmbarque, D),
+    el('ManifestNo', {}, ia.manifiestoNo, D),
     el('ConsigneeCode', {}, sigaPartyCode(e.consignatario), D),
     el('ConsigneeName', {}, e.consignatario.nombre, D),
     el('ConsigneeNationality', {}, e.consignatario.paisDocumento || PAIS_RD, D),
+    el('CargoControlNo', {}, ia.cargoControlNo, D),
     el('CommercialInvoiceNo', {}, d.facturaComercialNo, D),
     el('DestinationLocationCode', {}, d.depositoDestino, D),
     el('EntryPort', {}, portCode(d.puertoEntrada), D),
     el('DepartureCountryCode', {}, d.paisProcedenciaCodigo, D),
-    el('TransportCompanyCode', {}, '', D),
-    el('TransportNationality', {}, '', D),
-    el('TransportMethod', {}, '', D),
+    el('TransportCompanyCode', {}, ia.transportistaCodigo || ia.transportistaNombre, D),
+    el('TransportNationality', {}, ia.transporteNacionalidad, D),
+    el('TransportMethod', {}, ia.medioTransporte, D),
     el('EntryPlanDate', {}, xsDateTime(d.eta, now), D),
-    el('EntryDate', {}, xsDateTime(d.eta, now), D),
+    el('EntryDate', {}, xsDateTime(ia.fechaLlegadaReal || d.eta, now), D),
     el('ImporterCode', {}, sigaPartyCode(e.importador), D),
     el('ImporterName', {}, e.importador.nombre, D),
     el('ImporterNationality', {}, e.importador.paisDocumento || PAIS_RD, D),
@@ -176,7 +193,7 @@ function impDeclaration(e: Expediente, now: Date): string {
     el('TotalCIF', {}, num(e.valores.valorCifTotal), D),
     el('TotalWeight', {}, num(e.pesoMercancia.pesoBrutoKg), D),
     el('NetWeight', {}, num(e.pesoMercancia.pesoNetoKg), D),
-    el('Remark', {}, e.reference, D),
+    el('Remark', {}, REMARK_ESTANDAR, D),
     ...suppliers,
     ...products,
     ...containers,
@@ -185,21 +202,29 @@ function impDeclaration(e: Expediente, now: Date): string {
 
 function expDeclaration(e: Expediente, now: Date): string {
   const d = e.declaracion;
+  const ia = e.informacionAdicional;
   const D = 2;
   const products = e.partidas.map((p) => el('ExpDeclarationProduct', {}, [
     el('HSCode', {}, p.codigoPartida, D + 2),
+    el('ProductCode', {}, p.codigoProducto, D + 2),
     el('ProductName', {}, p.descripcion, D + 2),
-    el('BrandName', {}, 'N/A', D + 2),
-    el('ModelName', {}, 'N/A', D + 2),
-    el('ProductStatusCode', {}, '', D + 2),
+    el('BrandName', {}, p.marca || 'N/A', D + 2),
+    el('ModelName', {}, p.modelo || 'N/A', D + 2),
+    el('ProductStatusCode', {}, p.estadoProducto, D + 2),
+    el('ProductYear', {}, p.anio, D + 2),
     el('FOBValue', {}, num(p.valorFob), D + 2),
     el('UnitCode', {}, p.unidad, D + 2),
     el('Qty', {}, String(p.cantidad), D + 2),
-    el('TempProductYN', {}, 'false', D + 2),
-    el('CertificateOrignYN', {}, 'false', D + 2),
+    el('Weight', {}, num(p.pesoKg), D + 2),
+    el('ProductSpecification', {}, p.especificacion, D + 2),
+    el('TempProductYN', {}, bool(p.temporal), D + 2),
+    el('CertificateOrignYN', {}, bool(p.certificadoOrigen), D + 2),
+    el('CertificateOriginNo', {}, p.certificadoOrigenNo, D + 2),
     el('OriginCountry', {}, countryCode(p.paisOrigen) || PAIS_RD, D + 2),
     el('OrganicYN', {}, bool(p.organico), D + 2),
-    el('ProductDescription', {}, p.descripcion, D + 2),
+    el('GradeAlcohol', {}, num(p.gradoAlcohol), D + 2),
+    el('ProductSerialNo', {}, p.serial, D + 2),
+    el('ProductDescription', {}, p.descripcionAdicional || p.descripcion, D + 2),
   ], D + 1));
 
   const containers = e.contenedores.map((c) => el('ExpDeclarationContainer', {}, [
@@ -211,13 +236,17 @@ function expDeclaration(e: Expediente, now: Date): string {
 
   return el('ExpDeclaration', {}, [
     el('DeclarationDate', {}, xsDateTime('', now), D),
-    el('ClearanceType', {}, d.tipoDespacho, D),
+    el('ClearanceType', {}, tipoDespachoCodigo(d.tipoDespacho), D),
     el('AreaCode', {}, d.administracionCodigo, D),
     el('FormNo', {}, d.idSecuencia, D),
     el('BLNo', {}, d.docEmbarque, D),
     el('BondedArea', {}, d.depositoDestino, D),
+    el('TransportCompany', {}, ia.transportistaCodigo || ia.transportistaNombre, D),
+    el('TransportCompanynationality', {}, ia.transporteNacionalidad, D),
+    el('TransportMethod', {}, ia.medioTransporte, D),
     el('DeparturePort', {}, portCode(d.puertoEntrada), D),
     el('DestinationCountry', {}, d.paisProcedenciaCodigo, D),
+    el('VoyageNo', {}, ia.noViaje, D),
     el('ExporterCode', {}, sigaPartyCode(e.importador), D),
     el('ExporterName', {}, e.importador.nombre, D),
     el('ExporterNationality', {}, e.importador.paisDocumento || PAIS_RD, D),
@@ -236,7 +265,7 @@ function expDeclaration(e: Expediente, now: Date): string {
     el('TotalCIF', {}, num(e.valores.valorCifTotal), D),
     el('TotalWeight', {}, num(e.pesoMercancia.pesoBrutoKg), D),
     el('NetWeight', {}, num(e.pesoMercancia.pesoNetoKg), D),
-    el('Remark', {}, e.reference, D),
+    el('Remark', {}, REMARK_ESTANDAR, D),
     ...products,
     ...containers,
   ], 1);

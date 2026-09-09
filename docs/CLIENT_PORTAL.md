@@ -17,8 +17,9 @@ main app; the portal is a separate, narrower surface on the same data.
 | How is a client identified? | `User.clienteKey` = the cliente primary key, the pair (document type, number) rendered as `RNC:101000011` | The document already identifies the importer on every declaration, so no new join table is needed. |
 | What can a client see? | Only expedientes whose `entidadKey(importador)` equals their `clienteKey` | Enforced in `ClientPortalPage` (list filter) and `ClientPortalDetailPage` (404 on mismatch). |
 | What can a client do? | Nothing that writes. No edits, no observations, no checklist toggles. | Writes need an audit trail and a backend before they are safe. |
+| Which observations? | Only those marked `publica`. Staff toggle each one, and the add box has a "visible para el cliente" switch. | Internal notes ("falta permiso", "cliente no responde") must never reach the portal. |
 | Navigation | `Layout` filters `NAV_ITEMS` by role; clients only see "Mis Expedientes" and no notification bell | Notifications reference all expedientes and would leak other clients' data. |
-| Route guard | `ProtectedRoute roles={['client']}` for portal, `roles={['admin','agent']}` for staff; wrong role redirects to `homeForRole()` | A client who types `/expedientes` lands back on `/portal`; a staff user who types `/portal` lands on `/dashboard`. |
+| Route guard | `ProtectedRoute roles={['cliente']}` for portal, `roles={['admin','digitador']}` for staff; wrong role redirects to `homeForRole()` | A client who types `/expedientes` lands back on `/portal`; a staff user who types `/portal` lands on `/dashboard`. |
 | Login landing | `homeForRole(user.role)` | Clients never see the staff dashboard. |
 
 ## What the client sees
@@ -38,7 +39,7 @@ client-facing.
 
 ## Deferred (needs a backend)
 
-- Real authentication per client (today: one mock user, `cliente@aduana.com`, bound to key `RNC:101000011`).
+- Real authentication per client. Today there are two ways in: the mock user `cliente@aduana.com`, and an access link `#/acceso/<token>` an admin copies from the Relacionados grid. **The token is unsigned base64 of the cliente key** — fine for a POC, unacceptable in production.
 - Multiple users per client company; a user linked to several documents.
 - Document upload/download (BL, invoices, DGA release).
 - Client-originated messages (would become observations tagged with origin = cliente).

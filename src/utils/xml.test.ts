@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { buildFullXml, buildSigaImportXml, buildSigaExportXml, buildSigaXmlFiles, escapeXml, SIGA_NS_IMPORT, SIGA_NS_EXPORT } from './xml';
 import { ExpedienteStatus } from '../types';
 import type { Expediente } from '../types';
+import { emptyPartida, withDerived } from './partida';
+import { emptyInformacionAdicional } from '../store/expedientesStore';
 
 const NOW = new Date('2026-09-03T12:00:00Z');
 
@@ -26,9 +28,20 @@ const sample: Expediente = {
   valores: { tasaCambio: 65, valorFobTotal: 100, seguro: 1, flete: 2, otros: 0, valorCifTotal: 103 },
   regimenAduanero: { codigo: '1', nombre: 'DESPACHO A CONSUMO', acuerdo: '' },
   pesoMercancia: { codigoMercancia: 'M', pesoBrutoKg: 10, pesoNetoKg: 9 },
-  partidas: [{ id: 'p1', codigoPartida: '4818.30.00', descripcion: 'Servilletas', organico: false, cantidad: 10, unidad: 'KILOGRAMOS', paisOrigen: 'ESPAÑA', valorFob: 100, unitario: 10, facturaDva: 'F-1' }],
+  partidas: [withDerived({
+    ...emptyPartida(),
+    id: 'p1', codigoPartida: '4818.30.00', codigoProducto: 'SP4020', descripcion: 'Servilletas',
+    cantidad: 10, unidad: 'KILOGRAMOS', paisOrigen: 'ESPAÑA', valorFob: 100, facturaDva: 'F-1',
+    marca: 'SUAO', estadoProducto: 'IC04-002', certificadoOrigen: true, certificadoOrigenNo: 'CO-9',
+    vehiculo: { tipo: 'SEDAN', chasis: 'CH-1', color: 'ROJO', motor: 'M-1', cc: 1600 },
+  })],
+  informacionAdicional: {
+    ...emptyInformacionAdicional(),
+    transportistaNombre: 'MAERSK LINE', transporteNacionalidad: '208', medioTransporte: 'MARITIMO',
+    noViaje: 'V-2202', manifiestoNo: 'MAN-1', cargoControlNo: 'CC-1', fechaLlegadaReal: '2026-02-27',
+  },
   digitador: 'Ana', gestor: 'Pedro',
-  observaciones: [{ id: 'o1', fecha: '2026-01-02T00:00:00Z', usuario: 'Ana', texto: 'nota & más' }],
+  observaciones: [{ id: 'o1', fecha: '2026-01-02T00:00:00Z', usuario: 'Ana', texto: 'nota & más', publica: true }],
   assignedUserId: '2', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z',
 };
 
@@ -85,7 +98,7 @@ describe('buildSigaImportXml (ImportDUA.xsd)', () => {
 
   it('maps the app fields onto the DUA', () => {
     expect(xml).toContain('<AreaCode>10030</AreaCode>');
-    expect(xml).toContain('<ClearanceType>GENERAL</ClearanceType>');
+    expect(xml).toContain('<ClearanceType>IC38-001</ClearanceType>');   // SIGA code, not the label
     expect(xml).toContain('<BLNo>BL-1</BLNo>');
     expect(xml).toContain('<EntryPort>DOHAI</EntryPort>');           // "Rio Haina" resolved to its UN/LOCODE
     expect(xml).toContain('<DepartureCountryCode>724</DepartureCountryCode>');
@@ -101,9 +114,31 @@ describe('buildSigaImportXml (ImportDUA.xsd)', () => {
     expect(xml).toContain('<ContainerNo>CONT-1</ContainerNo>');
   });
 
-  it('keeps required-but-untracked elements present and empty', () => {
-    expect(xml).toContain('<TransportCompanyCode></TransportCompanyCode>');
-    expect(xml).toContain('<TransportMethod></TransportMethod>');
+  it('carries the renglon detail fields', () => {
+    expect(xml).toContain('<ProductCode>SP4020</ProductCode>');
+    expect(xml).toContain('<BrandName>SUAO</BrandName>');
+    expect(xml).toContain('<ProductStatusCode>IC04-002</ProductStatusCode>');
+    expect(xml).toContain('<CertificateOrignYN>true</CertificateOrignYN>');
+    expect(xml).toContain('<CertificateOriginNo>CO-9</CertificateOriginNo>');
+    expect(xml).toContain('<VehicleChassis>CH-1</VehicleChassis>');
+    expect(xml).toContain('<VehicleCC>1600</VehicleCC>');
+  });
+
+  it('uses the brokerage standard remark', () => {
+    expect(xml).toContain('<Remark>DECLARAMOS EN BASE A LA INFORMACIÓN PROPORCIONADA POR EL CLIENTE</Remark>');
+  });
+
+  it('fills the transport block from informacion adicional', () => {
+    expect(xml).toContain('<TransportCompanyCode>MAERSK LINE</TransportCompanyCode>');
+    expect(xml).toContain('<TransportNationality>208</TransportNationality>');
+    expect(xml).toContain('<TransportMethod>MARITIMO</TransportMethod>');
+    expect(xml).toContain('<ManifestNo>MAN-1</ManifestNo>');
+    expect(xml).toContain('<CargoControlNo>CC-1</CargoControlNo>');
+    expect(xml).toContain('<EntryDate>2026-02-27T00:00:00</EntryDate>');   // actual arrival, not the ETA
+  });
+
+  it('still emits schema-required elements the app does not track, empty', () => {
+    expect(xml).toContain('<AgreementCode></AgreementCode>');
   });
 
   it('does not leak app-only concepts', () => {

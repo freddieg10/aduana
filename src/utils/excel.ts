@@ -1,12 +1,13 @@
 import * as XLSX from 'xlsx';
 import { ExpedienteStatus } from '../types';
 import type { Partida, TipoDocumento, TipoExpediente } from '../types';
-import type { NewExpediente } from '../store/expedientesStore';
+import { emptyInformacionAdicional, type NewExpediente } from '../store/expedientesStore';
 import {
-  ADMINISTRACIONES, AGENTE_ADUANAL_DEFAULT, PAIS_RD, TASA_CAMBIO_DEFAULT, TIPOS_DOCUMENTO, makeDefaultChecklist,
+  ADMINISTRACIONES, AGENTE_ADUANAL_DEFAULT, ESTADOS_PRODUCTO, PAIS_RD, TASA_CAMBIO_DEFAULT, TIPOS_DOCUMENTO, makeDefaultChecklist,
   findAdministracion, findRegimen,
 } from '../data/catalogos';
 import { TIPO_DOCUMENTO_DEFAULT } from './documento';
+import { emptyPartida, withDerived } from './partida';
 import { findCountryByCode, findCountryByName } from '../data/countries';
 import { parseLegacyNotes } from './observaciones';
 
@@ -41,8 +42,9 @@ export type FieldKey =
   | 'tasaCambio' | 'valorFobTotal' | 'seguro' | 'flete' | 'otros' | 'valorCifTotal'
   | 'regimenCodigo' | 'regimenNombre' | 'acuerdo'
   | 'codigoMercancia' | 'pesoBrutoKg' | 'pesoNetoKg'
-  | 'codigoPartida' | 'descripcion' | 'organico' | 'cantidad' | 'unidad' | 'paisOrigen'
-  | 'valorFob' | 'unitario' | 'facturaDva';
+  | 'codigoPartida' | 'codigoProducto' | 'descripcion' | 'organico' | 'cantidad' | 'unidad' | 'paisOrigen'
+  | 'valorFob' | 'unitario' | 'facturaDva'
+  | 'marca' | 'modelo' | 'estadoProducto' | 'anio' | 'serial' | 'especificacion';
 
 const FIELD_ALIASES: Record<FieldKey, string[]> = {
   reference: ['reference', 'referencia', 'expediente', 'ref'],
@@ -112,6 +114,13 @@ const FIELD_ALIASES: Record<FieldKey, string[]> = {
   valorFob: ['valorfob', 'fob', 'valor', 'fobvalue', 'total'],
   unitario: ['unitario', 'preciounitario', 'valorunitario', 'unitprice', 'precio'],
   facturaDva: ['facturadva', 'dva', 'facturarenglon'],
+  codigoProducto: ['codigoproducto', 'codproducto', 'codprod', 'productcode', 'sku'],
+  marca: ['marca', 'brand', 'brandname'],
+  modelo: ['modelo', 'model', 'modelname'],
+  estadoProducto: ['estadoproducto', 'estado', 'condicion', 'productstatus'],
+  anio: ['anio', 'ano', 'year', 'productyear'],
+  serial: ['serial', 'numeroserie', 'serialno', 'noserie'],
+  especificacion: ['especificacion', 'specification', 'especificaciones'],
 };
 
 const ALIAS_LOOKUP: Map<string, FieldKey> = new Map();
@@ -233,21 +242,29 @@ const num = (v: unknown) => (typeof v === 'number' ? v : Number(v) || 0);
 
 export function rowToPartida(row: ParsedRow): Partida {
   const f = row.fields;
-  const cantidad = num(f.cantidad);
-  const valorFob = num(f.valorFob);
-  const unitario = num(f.unitario) || (cantidad > 0 ? valorFob / cantidad : 0);
-  return {
-    id: crypto.randomUUID(),
+  const base = emptyPartida();
+  const estado = ESTADOS_PRODUCTO.find(
+    (e) => e.codigo === str(f.estadoProducto).toUpperCase() || e.nombre === str(f.estadoProducto).toUpperCase(),
+  );
+  // `unitario` is always derived from FOB / quantity, so a unit-price column is ignored.
+  return withDerived({
+    ...base,
     codigoPartida: str(f.codigoPartida),
+    codigoProducto: str(f.codigoProducto),
     descripcion: str(f.descripcion),
     organico: Boolean(f.organico),
-    cantidad,
-    unidad: str(f.unidad) || 'KILOGRAMOS',
+    cantidad: num(f.cantidad),
+    unidad: str(f.unidad) || base.unidad,
     paisOrigen: str(f.paisOrigen),
-    valorFob,
-    unitario,
+    valorFob: num(f.valorFob),
     facturaDva: str(f.facturaDva),
-  };
+    marca: str(f.marca),
+    modelo: str(f.modelo),
+    estadoProducto: estado?.codigo ?? base.estadoProducto,
+    anio: str(f.anio),
+    serial: str(f.serial),
+    especificacion: str(f.especificacion),
+  });
 }
 
 function normalizeStatus(v: unknown): ExpedienteStatus {
@@ -369,6 +386,7 @@ export function rowsToExpedientes(rows: ParsedRow[]): NewExpediente[] {
       regimenAduanero: { codigo: regimenCodigo, nombre: regimenNombre, acuerdo: str(f.acuerdo) },
       pesoMercancia: { codigoMercancia: str(f.codigoMercancia), pesoBrutoKg: num(f.pesoBrutoKg), pesoNetoKg: num(f.pesoNetoKg) },
       partidas,
+      informacionAdicional: emptyInformacionAdicional(),
       digitador: str(f.digitador),
       gestor: str(f.gestor),
       observaciones,

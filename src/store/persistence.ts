@@ -1,6 +1,7 @@
 import { useExpedientesStore } from './expedientesStore';
 import { useRelacionadosStore } from './relacionadosStore';
 import { useNotificationStore } from './notificationStore';
+import { useSettingsStore } from './settingsStore';
 
 /**
  * Session-scoped persistence.
@@ -21,6 +22,7 @@ const PERSISTED_STORES: PersistedStore[] = [
   useExpedientesStore,
   useRelacionadosStore,
   useNotificationStore,
+  useSettingsStore,
 ];
 
 /** The localStorage keys those stores own, for diagnostics and manual cleanup. */
@@ -28,6 +30,7 @@ export const PERSISTED_KEYS = [
   'aduana-expedientes',
   'aduana-relacionados',
   'aduana-notifications',
+  'aduana-settings',
 ] as const;
 
 /**

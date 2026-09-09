@@ -64,7 +64,9 @@ describe('migrateExpediente', () => {
       id: '2', reference: 'R2', observaciones: [{ id: 'o', fecha: '', usuario: 'x', texto: 'y' }], digitador: 'Ana', gestor: 'Pedro',
     };
     const out = migrateExpediente(current);
-    expect(out.observaciones).toEqual(current.observaciones);
+    expect(out.observaciones).toHaveLength(1);
+    expect(out.observaciones[0]).toMatchObject({ id: 'o', texto: 'y', publica: false });   // private by default
+    expect(out.informacionAdicional.medioTransporte).toBe('');
     expect(out.digitador).toBe('Ana');
     expect(out.gestor).toBe('Pedro');
   });

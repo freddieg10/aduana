@@ -35,9 +35,9 @@ describe('parseLegacyNotes', () => {
 });
 
 describe('sortObservaciones', () => {
-  const a = { id: 'a', fecha: '2026-01-01T00:00:00Z', usuario: '', texto: 'a' };
-  const b = { id: 'b', fecha: '2026-02-01T00:00:00Z', usuario: '', texto: 'b' };
-  const undated = { id: 'u', fecha: '', usuario: '', texto: 'u' };
+  const a = { id: 'a', fecha: '2026-01-01T00:00:00Z', usuario: '', texto: 'a', publica: false };
+  const b = { id: 'b', fecha: '2026-02-01T00:00:00Z', usuario: '', texto: 'b', publica: false };
+  const undated = { id: 'u', fecha: '', usuario: '', texto: 'u', publica: false };
 
   it('sorts newest first by default order desc and undated last', () => {
     expect(sortObservaciones([undated, a, b], 'desc').map((o) => o.id)).toEqual(['b', 'a', 'u']);

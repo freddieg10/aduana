@@ -36,20 +36,23 @@ Pushing to `dev` triggers `.github/workflows/deploy.yml`, which builds and deplo
 
 **Routing** (`src/App.tsx`): `/login` is public. Two guarded route trees, each wrapped in `ProtectedRoute` (with a `roles` prop) and then `Layout`:
 
-- staff (`admin`, `agent`): `/dashboard`, `/expedientes`, `/expedientes/new`, `/expedientes/:id`, `/relacionados`, `/import-export`, `/reports`
-- client: `/portal`, `/portal/:id`
+- staff (`admin`, `digitador`): `/dashboard`, `/expedientes`, `/expedientes/new`, `/expedientes/:id`, `/relacionados`, `/import-export`, `/reports`
+- admin only: `/settings`
+- cliente: `/portal`, `/portal/:id`
+- public: `/login` and `/acceso/:token` (client access link)
 
 A wrong-role user is redirected to `homeForRole()` from `authStore`. `Layout` filters `NAV_ITEMS` by role and hides the notification bell for clients. Adding a staff page: create it under `src/features/<feature>/`, add a `<Route>` in the staff tree, add to `NAV_ITEMS` in `Layout.tsx`, add `nav.<key>` to both locale files.
 
-**State** is five Zustand stores in `src/store/`:
+**State** is six Zustand stores in `src/store/`:
 
 | Store | Persistence | Notes |
 |---|---|---|
-| `expedientesStore` | `localStorage` (`aduana-expedientes`, version 5) | Core domain store. Seeded on first load. Has a `migrate` that upgrades old persisted shapes (see below). Also owns observation CRUD. |
-| `relacionadosStore` | `localStorage` (version 2) | Clientes (keyed by document type + number) and suplidores master data, seeded from the expediente seed. |
+| `expedientesStore` | `localStorage` (`aduana-expedientes`, version 7) | Core domain store. Seeded on first load. Has a `migrate` that upgrades old persisted shapes (see below). Also owns observation CRUD. |
+| `relacionadosStore` | `localStorage` (version 3) | Clientes, suplidores (both keyed by document type + number) and depósitos, seeded from the expediente seed. |
 | `notificationStore` | `localStorage` | Notifications reference expedientes by id. |
 | `authStore` | `sessionStorage` (`auth-user-v2`) | Three hard-coded `MOCK_USERS`. Client user carries `clienteKey`. Bump the storage key when the user shape changes. |
-| `themeStore` | `localStorage` | light/dark. |
+| `settingsStore` | `localStorage` (session-scoped) | Tasa USD, Art. 52 window, tarifario, and the digitador/gestor lists the form reads. |
+| `themeStore` | `localStorage` | light/dark. Deliberately outlives logout. |
 
 **Persistence is session-scoped.** `src/store/persistence.ts` is the single place that knows which stores hold session data: expedientes, relacionados and notifications. They survive a refresh, and `clearPersistedData()` resets each one to its seed and then drops its localStorage key — in that order, because `resetToSeed` is a `set` and the persist middleware would otherwise write the seed straight back. `authStore.logout()` calls it, so logging out leaves the browser empty; `Layout` confirms first because that is destructive. The theme store is deliberately excluded: a display preference should outlive a session. A new persisted store must implement `resetToSeed` and be registered in `PERSISTED_STORES`.
 
@@ -57,7 +60,7 @@ To get back to seed data by hand, call `clearPersistedData()` or a single store'
 
 **Data model** (`src/types/index.ts`): `Expediente` is a large nested record mirroring the DGA declaration form: `declaracion`, parties (`importador`, `agenteAduanal`, `consignatario`, `compradorExportacion`, `suplidores`), `documentos`, `contenedores`, `valores` (FOB/CIF), `regimenAduanero`, `pesoMercancia`, `partidas` (tariff lines, "Renglones" in the UI), plus `digitador`, `gestor`, `checklist`, and `observaciones: Observacion[]`. `ExpedienteFormData` is the editable subset used by the form. `ExpedienteStatus` is a `const` object + derived union type, not an enum; iterate it with `Object.values(ExpedienteStatus)`.
 
-**Catalogs** live in `src/data/`: `countries.ts` (ISO 3166-1 numeric codes, Spanish uppercase names; `findCountryByCode/Name`), `puertos.ts` (DGA port master table, UN/LOCODE; `findPuerto`), `catalogos.ts` (the SIGA area table as `ADMINISTRACIONES`, tipos de despacho, `REGIMENES_IMPORTACION` / `REGIMENES_EXPORTACION` with `regimenesFor(tipo)`, unidades, staff names, default checklist, brokerage defaults). Administración codes, régimen codes and tipo-de-despacho labels are the real SIGA values; do not invent new ones. See KNOWLEDGE.md §6.
+**Catalogs** live in `src/data/`: `countries.ts` (ISO 3166-1 numeric codes, Spanish uppercase names; `findCountryByCode/Name`), `puertos.ts` (DGA port master table, UN/LOCODE; `findPuerto`), `catalogos.ts` (the SIGA area table as `ADMINISTRACIONES`, `TIPOS_DESPACHO` with IC38 codes, `REGIMENES_IMPORTACION` / `REGIMENES_EXPORTACION` with `regimenesFor(tipo)`, `ESTADOS_PRODUCTO` (IC04), `ACUERDOS`, `REMARK_ESTANDAR`, unidades, staff names, default checklist, brokerage defaults). These are the real SIGA values; do not invent new ones. See KNOWLEDGE.md §6.
 
 **The form is shared.** `src/components/ExpedienteForm.tsx` is the tabbed editor (Declaración / Partes / Docs & Contenedores / Valores & Régimen / Renglones, plus optional `extraTabs`). It is fully controlled: `value: ExpedienteFormData`, `onChange(next)`. `ExpedienteCreatePage` and `ExpedienteDetailPage` are thin wrappers that own the state and call the store on save. Country and administración selects auto-fill their code fields; importador/suplidor name fields are `freeSolo` autocompletes over the relacionados store; importador edits mirror into consignatario until consignatario is edited by hand.
 
@@ -65,7 +68,13 @@ To get back to seed data by hand, call `clearPersistedData()` or a single store'
 
 **Parties are keyed by a document pair.** `Cliente` mirrors SIGA's importer form and its primary key is (`tipoDocumento`, `documento`) where the type is CED / PAS / RNC / TID — the same number under two types is two different parties. `src/utils/documento.ts` owns the rules: `clienteKey`, `entidadKey` (same key from an expediente party), `sigaPartyCode` (the `[RNC|PAS|TID][country][number]` / `[CED][number]` form the XSD documents) and `clienteToEntidad`. Never compare document numbers directly; they are matched with dashes and case stripped. The portal binds a client user through `User.clienteKey`.
 
+**Renglones.** `Partida` carries far more than the grid shows: `src/utils/partida.ts` owns `emptyPartida`, `migratePartida` and `withDerived`. **`unitario` is always derived** (FOB / cantidad) — never write it directly, always route edits through `withDerived`. The fields behind the eye icon live in `PartidaDetailDialog`; they map one-to-one onto ImportDUA.xsd elements, so adding one means adding it to the XML builders too.
+
+**Roles are capability-based.** `src/utils/permisos.ts` maps each role to capabilities; `Layout`'s nav, the Reportería tabs and the Relacionados tabs all filter on `can(role, cap)` rather than checking role names. Adding a page means adding a capability there too. A cliente can also arrive through `#/acceso/<token>`; `buildAccessToken` explains why that token is not a security boundary.
+
 **Checklist drives status.** `toggleChecklistItem` auto-sets status to `Completo` when all items are checked and `Verificado` when some are. The status dropdown can also set it directly.
+
+**Reporting and validation utilities** are pure and unit-tested, and the pages only render them: `reportes.ts` (the five reports plus the product-history dedup rule), `art52.ts` (late-presentation surcharge; only meaningful for files not yet presented), `vuce.ts` (permit rules by HS chapter, and the non-temporary check), `hojaRegistro.ts` (the printable sheet as standalone HTML).
 
 **Import/Export** (`src/utils/excel.ts`, `src/utils/xml.ts`, `ImportExportPage`):
 - Excel: `parseWorkbook` reads every sheet and every column. Headers are normalised (accents/spaces/punctuation stripped) and matched against `FIELD_ALIASES`; unmatched columns are kept in `row.extra` and shown in the preview but not imported. `rowsToExpedientes` groups rows by reference (one expediente, one partida per row) and fills catalog names from codes and vice versa. **To support a new spreadsheet layout, add aliases to `FIELD_ALIASES`; do not special-case in the page.**

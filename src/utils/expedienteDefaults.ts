@@ -1,6 +1,7 @@
 import { ExpedienteStatus } from '../types';
 import type { Expediente, ExpedienteFormData, TipoExpediente } from '../types';
 import { AGENTE_ADUANAL_DEFAULT, TASA_CAMBIO_DEFAULT } from '../data/catalogos';
+import { emptyInformacionAdicional } from '../store/expedientesStore';
 
 /** A blank form for a new expediente of the given type. */
 export const emptyFormData = (tipoExpediente: TipoExpediente): ExpedienteFormData => ({
@@ -24,6 +25,7 @@ export const emptyFormData = (tipoExpediente: TipoExpediente): ExpedienteFormDat
   regimenAduanero: { codigo: '1', nombre: 'DESPACHO A CONSUMO', acuerdo: '' },
   pesoMercancia: { codigoMercancia: '', pesoBrutoKg: 0, pesoNetoKg: 0 },
   partidas: [],
+  informacionAdicional: emptyInformacionAdicional(),
   digitador: '',
   gestor: '',
 });
@@ -46,6 +48,7 @@ export const toFormData = (e: Expediente): ExpedienteFormData => ({
   regimenAduanero: e.regimenAduanero,
   pesoMercancia: e.pesoMercancia,
   partidas: e.partidas,
+  informacionAdicional: e.informacionAdicional,
   digitador: e.digitador,
   gestor: e.gestor,
 });

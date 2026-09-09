@@ -31,9 +31,14 @@ A case-management tool for a Dominican Republic customs brokerage (agente aduana
 | Cliente | Master-data record for an importador, mirroring SIGA's importer form and keyed by (tipoDocumento, documento) | `Cliente` |
 | Relacionados | The master-data module (clientes + suplidores) | `relacionadosStore`, `RelacionadosPage` |
 | Doc. Embarque / BL | Bill of lading or shipping document number | `declaracion.docEmbarque` |
-| Partida / Renglón | Tariff line item (HS code, description, qty, unit, origin, FOB). UI says "Renglón"; code says `partida` | `Partida` |
+| Partida / Renglón | Tariff line item. The grid holds HS code, product code, description, qty, unit, origin and FOB; the detail dialog holds brand, condition, certificate, alcohol grade, retail price and vehicle data | `Partida` |
 | Factura DVA | Invoice reference on a partida (DVA = Declaración de Valor en Aduana) | `Partida.facturaDva` |
 | FOB / CIF | Free on board / Cost+insurance+freight totals | `Valores` |
+| Acuerdo | Trade agreement claimed on the declaration (DR-CAFTA, EPA, SGP…) | `ACUERDOS` |
+| Depósito | Bonded warehouse the goods move to | `Deposito` |
+| ART 52 | Late-presentation surcharge: the declaration was filed too long after arrival | `src/utils/art52.ts` |
+| VUCE / SIRE | Ventanilla Única de Comercio Exterior — the permits window a partida may need | `src/utils/vuce.ts` |
+| Hoja de registro | Printable summary sheet filed with the declaration | `src/utils/hojaRegistro.ts` |
 | Digitador | Data-entry staff assigned to the file | `Expediente.digitador` |
 | Gestor | Case manager / dispatcher assigned to the file | `Expediente.gestor` |
 | RNC / CED / PAS / TID | SIGA document types: tax ID, cédula, passport, foreign tax ID. Type + number identify a party | `TipoDocumento`, `Cliente.documento` |
@@ -97,6 +102,61 @@ Source: product notes from Freddie, Sept 2026. Status as of 2026-09-02.
 - [x] Sidebar module with Clientes/Importadores and Suplidores tabs, CRUD dialogs, country picker. The cliente form mirrors SIGA's importer form and is keyed by (tipo de documento, documento)
 - [x] Partes tab picks importador / suplidor from master data (freeSolo, so unregistered names still work)
 - [ ] Warn when an expediente's importador code has no matching cliente
+
+## 4b. Roadmap ("Episode 3")
+
+Source: product notes from Freddie, 2026-09-03 (SIGA screens + backlog). Done items are marked; the rest is the open backlog with what each one needs.
+
+### Catálogos SIGA — done
+- [x] Tipos de despacho with their IC38 codes; the XML emits the code (`tipoDespachoCodigo`)
+- [x] Estado de producto IC04-001…011 (`ESTADOS_PRODUCTO`) → `ProductStatusCode`
+- [x] Acuerdos comerciales with leyes referenciales (`ACUERDOS`) → `AgreementCode`, now a dropdown on Valores & Régimen
+- [x] Remark estándar ("DECLARAMOS EN BASE A LA INFORMACIÓN PROPORCIONADA POR EL CLIENTE") emitted on every DUA
+- [ ] **Medidas**: SIGA unit-of-measure codes. `UNIDADES` is still free-text labels; the XML sends the label as `UnitCode`. Needs the DGA table.
+- [ ] Container-type and required-document-type codes (same situation)
+
+### Renglones — done
+- [x] Código de producto column (`ProductCode`)
+- [x] Precio unitario calculated automatically (FOB / cantidad) and shown read-only
+- [x] "Ojito" per renglón opening the detail dialog: marca, modelo, estado, año, peso, especificación, descripción adicional, serial, temporal, certificado de origen (+ número), grado alcohólico, precio de venta al detalle, and the vehicle block (tipo, chasis, color, motor, CC). The eye turns blue when a line carries detail.
+- [x] All of the above now travel in the SIGA XML
+
+### Relacionados — done
+- [x] Suplidor form mirrors SIGA's "Buscar Información Proveedor" (tipo: Persona / Empresa Proveedora Exterior / Empresa Exportadora), keyed by (tipoDocumento, documento) like clientes
+- [x] Depósitos tab; `declaracion.depositoDestino` is now a picker over it → `DestinationLocationCode`
+- [x] Search box filtering the visible tab
+
+### Expedientes — done
+- [x] **Tab Información adicional** — transportista (código, nombre, nacionalidad), medio de transporte, no. viaje/vuelo, no. manifiesto, cargo control, fecha de llegada real, notas. These also fill the DUA elements that used to be exported empty (`TransportCompanyCode`, `TransportNationality`, `TransportMethod`, `ManifestNo`, `CargoControlNo`, `EntryDate`, `VoyageNo`).
+- [x] **Tab VUCE** — flags the partidas whose HS chapter needs a permit and names the issuing body (`src/utils/vuce.ts`). This is a local rule table, not a SIRE integration: there is no public VUCE API, so a digitador still confirms in VUCE itself. Replace `REGLAS_VUCE` when an integration exists.
+- [x] **Validación productos no temporal** — a renglón may only be marked temporary under régimen 2, 3 or 5; otherwise the VUCE tab shows an error listing the offending lines.
+- [x] **Generación hoja de registro** — printable sheet built by `buildHojaRegistroHtml` and shown in an iframe with Imprimir / Descargar. It is our own layout: replace it when the brokerage's real template is available.
+- [ ] **Preliquidación** — still needs the duty/tax formula (arancel, ITBIS, selectivo) and the rate source.
+
+### Usuarios — done
+- **ADMIN** — everything, including client reporting and Settings.
+- **DIGITADOR** (replaces the old `agent`) — expedientes, XML, the product-history report, and only the Suplidores tab of Relacionados.
+- **CLIENTE** — the portal only, and only observations marked public.
+
+`src/utils/permisos.ts` holds the capability table; `Layout` and the report/relacionados tabs read from it. Observations carry `publica` (private by default) with a per-observation toggle for staff and a switch when adding one.
+
+**Client access links.** An admin copies a link from the Relacionados clientes grid; `#/acceso/<token>` signs the visitor in as that cliente with no password. **The token is only base64 of the cliente key, so it is a POC convenience and not a security boundary** — anyone who guesses a client's RNC can build one. A real deployment needs a signed, expiring token from a backend.
+
+### Reportería — done
+- **Clientes**: date range, expedientes and contenedores (totals and per month), last 5 expedientes, total CIF, average renglones and contenedores per expediente.
+- **Digitadores**: date range, expedientes, renglones, contenedores, Art. 52 count.
+- **Gestores**: the same without the Art. 52 column.
+- **Historial de productos**: general or per client, exported as ARC > COD PROD > REF > DESCRIPCIÓN > UNIDAD > PAÍS > SUPLIDOR > EXPEDIENTES, with each expediente's status. Built from what is keyed in.
+  - Dedup rule (confirmed by Freddie): a product reappearing on another expediente does not create a second row, the expediente is added to the existing one; it duplicates only when the partida or the código de producto changes. When a line has no código de producto the normalised description stands in for it, otherwise unrelated products sharing a tariff heading would collapse together.
+- **Estatus**: por llegar, llegados no presentados, con recargo Art. 52, plus the status pie.
+
+**Art. 52** (confirmed by Freddie as a late-presentation surcharge) is computed in `src/utils/art52.ts`: it applies when a file has not reached Presentado and the arrival date (actual if recorded, else ETA) is more than `diasArt52` days ago. **A file already presented cannot be judged**, because the app records no filing date — those are reported as "no evaluable" rather than guessed. Adding a `fechaPresentacion` would close that gap. The window defaults to 30 days and is editable in Settings; confirm the real figure with the DGA.
+
+### Settings — done
+- Tasa USD (used for new expedientes) and the Art. 52 window.
+- Tarifario: agency services with price, currency and notes.
+- Digitadores and gestores are now managed here instead of being constants; the expediente form reads them from the settings store.
+- **Automatic USD rate** is not implemented: the browser cannot read aduanas.gob.do directly (CORS), so it needs a backend or a proxy. The page says so.
 
 ## 5. Known technical debt
 
@@ -238,6 +298,13 @@ Suplidores were left on their own `codigo` + `tid`; only the importer side was s
 | 2026-09-03 | Full SIGA area table and import/export regime tables loaded into `catalogos.ts`; store version 3 remaps stale codes by name | Freddie supplied the SIGA catalog tables |
 | 2026-09-03 | Real tipo de despacho list loaded; invented values mapped away at store version 4 | Freddie supplied the SIGA dropdown |
 | 2026-09-03 | RNC became the cliente primary key and the importer code; the separate `codigo` field was dropped (relacionados store v1, expedientes store v5 remap old codes) | Freddie: "the codigo should be the RNC field, this will be the PK and is required". SIGA builds `ImporterCode` from the RNC, so one field serves both |
+| 2026-09-03 | Roles reworked to admin / digitador / cliente with a capability table, and observations gained a public flag | Freddie's user-type notes: a digitador sees less than an admin, and a cliente sees only public observations |
+| 2026-09-03 | Client access by link rather than a password account | Freddie: "CLIENTES = acceso a través de un link generado por admin". Implemented unsigned for the POC and documented as insecure |
+| 2026-09-03 | Art. 52 computed only for files not yet presented | The app stores no filing date, so lateness of an already-filed declaration is unknowable; reporting it as "no evaluable" beats guessing |
+| 2026-09-03 | VUCE implemented as a local rule table, not an integration | No public SIRE API; the table names the likely permit and issuing body so the digitador knows what to check |
+| 2026-09-03 | Renglones gained the full SIGA line detail behind a per-row dialog rather than more grid columns | The grid stays readable; vehicle/alcohol/certificate fields are rare but required by the XSD when present |
+| 2026-09-03 | Unit price is derived, never entered | Freddie: "en renglones cálculo automático de precio unitario". A stored unitario is ignored on import and re-derived |
+| 2026-09-03 | Suplidores switched to the SIGA proveedor form and keyed by document, matching clientes | Freddie supplied the SIGA screen; expediente suplidor codes migrated from SUP-0n to the TID |
 | 2026-09-03 | Session-scoped persistence: logout clears the persisted stores and resets them to seed, with a confirmation dialog | Freddie: "add a persistor to state, so I can refresh without losing data - cleared when logged out". Theme excluded as it is a display preference |
 | 2026-09-03 | Cliente form rebuilt to match SIGA's importer form; the key became the dynamic pair (tipoDocumento, documento) rather than the RNC alone; party codes in the SIGA XML are now composed per the XSD | Freddie supplied the SIGA screen: the document type dropdown (CED/PAS/RNC/TID) makes the identifier dynamic |
 | 2026-09-02 | Excel import matches normalised header aliases rather than exact names | Client spreadsheets vary in capitalisation and accents |

@@ -9,7 +9,8 @@
     "reports": "Reports",
     "importExport": "Import / Export",
     "portal": "My Files",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "settings": "Settings"
   },
   "auth": {
     "login": "Log In",
@@ -20,10 +21,10 @@
     "welcome": "Welcome",
     "quickLogin": "Quick login (demo)",
     "role_admin": "Admin",
-    "role_agent": "Agent",
-    "role_client": "Client",
     "logoutTitle": "Log out",
-    "logoutWarning": "The data stored in this browser (files, contacts and notifications) will be erased and reset to the sample data. Export anything you need to keep before continuing."
+    "logoutWarning": "The data stored in this browser (files, contacts and notifications) will be erased and reset to the sample data. Export anything you need to keep before continuing.",
+    "role_digitador": "Data entry",
+    "role_cliente": "Client"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -74,7 +75,11 @@
     "tipo_importacion": "Import",
     "tipo_exportacion": "Export",
     "tipo_importacion_desc": "Clearance of imported goods",
-    "tipo_exportacion_desc": "Clearance of goods for export"
+    "tipo_exportacion_desc": "Clearance of goods for export",
+    "observacionPublica": "Public",
+    "hacerPublica": "Make visible to the client",
+    "hacerPrivada": "Hide from the client",
+    "visibleParaCliente": "Visible to the client in the portal"
   },
   "invoice": {
     "number": "Invoice Number",
@@ -176,7 +181,54 @@
     "puertoEntradaHint": "Ports from the DGA master table; the UN/LOCODE goes into the SIGA XML",
     "tipoDocumento": "Doc. Type",
     "documento": "Document",
-    "documentoHint": "Importer document (RNC, CED, PAS or TID)"
+    "documentoHint": "Importer document (RNC, CED, PAS or TID)",
+    "codigoProducto": "Prod. Code",
+    "unitarioAuto": "Calculated automatically: FOB value / quantity",
+    "sinAcuerdo": "No agreement",
+    "detalleRenglon": "Line item detail",
+    "detalleProducto": "Product",
+    "detalleCondiciones": "Conditions and values",
+    "detalleVehiculo": "Vehicle",
+    "marca": "Brand",
+    "modelo": "Model",
+    "estadoProducto": "Product condition",
+    "anio": "Year",
+    "pesoKg": "Weight (KG)",
+    "especificacion": "Specification",
+    "descripcionAdicional": "Additional description",
+    "serial": "Serial no.",
+    "temporal": "Temporary product",
+    "certificadoOrigen": "Certificate of origin",
+    "certificadoOrigenNo": "Certificate of origin no.",
+    "gradoAlcohol": "Alcohol content",
+    "precioVentaMenor": "Retail sale price",
+    "vehiculoTipo": "Vehicle type",
+    "vehiculoChasis": "Chassis",
+    "vehiculoColor": "Color",
+    "vehiculoMotor": "Engine",
+    "vehiculoCc": "CC",
+    "tabInfoAdicional": "Extra Info",
+    "tabVuce": "VUCE",
+    "infoAdicionalHint": "Completes the registration sheet and the transport fields the DUA requires.",
+    "transportistaCodigo": "Carrier code",
+    "transportistaNombre": "Carrier company",
+    "transporteNacionalidad": "Carrier nationality",
+    "medioTransporte": "Transport method",
+    "noViaje": "Voyage / flight no.",
+    "manifiestoNo": "Manifest no.",
+    "cargoControlNo": "Cargo control no.",
+    "fechaLlegadaReal": "Actual arrival date",
+    "fechaLlegadaRealHint": "Used for the Art. 52 surcharge calculation",
+    "notasHojaRegistro": "Notes for the registration sheet",
+    "vuceHint": "Local check of the tariff lines that usually need a permit. Always confirm in SIRE/VUCE.",
+    "noTemporalError": "Some line items are marked temporary, but the regime \"{{regimen}}\" is not a temporary one.",
+    "vuceSinPermisos": "No line item on this file needs a VUCE permit according to the recorded rules.",
+    "vucePermiso": "Permit",
+    "vuceEntidad": "Issuing body",
+    "vuceEstado": "Status",
+    "vuceDocumentado": "Documented",
+    "vucePendiente": "Pending",
+    "hojaRegistro": "Registration sheet"
   },
   "status": {
     "registrado": "Registered",
@@ -237,7 +289,15 @@
     "calle": "Street",
     "ciudad": "City",
     "zona": "Zone",
-    "paisOrigen": "Country of Origin"
+    "paisOrigen": "Country of Origin",
+    "depositos": "Warehouses",
+    "addDeposito": "New Warehouse",
+    "editDeposito": "Edit Warehouse",
+    "depositoCodigoHint": "Warehouse code used on declarations",
+    "buscar": "Search by name, document, city...",
+    "enlaceAcceso": "Link",
+    "copiarEnlace": "Copy the client access link",
+    "enlaceCopiado": "Access link copied. Share it with the client:"
   },
   "portal": {
     "title": "Client Portal",
@@ -248,7 +308,9 @@
     "noExpedientes": "You have no files on record.",
     "notLinked": "Your user is not linked to a client. Contact your customs broker.",
     "statusTimeline": "Clearance stage",
-    "backToList": "Back to my files"
+    "backToList": "Back to my files",
+    "enlaceInvalido": "This access link is not valid or has expired.",
+    "verificandoEnlace": "Checking your access link..."
   },
   "reports": {
     "title": "Reports",
@@ -262,7 +324,26 @@
     "summary": "Summary",
     "byStatus": "By Status",
     "byClient": "By Client",
-    "totalAmount": "Total Amount"
+    "totalAmount": "Total Amount",
+    "tabClientes": "Clients",
+    "tabDigitador": "Data entry",
+    "tabGestor": "Case managers",
+    "tabProductos": "Product history",
+    "tabEstatus": "File status",
+    "sinAcceso": "Your user has no access to reporting.",
+    "expedientes": "Files",
+    "expedientesMes": "Files/month",
+    "contenedoresMes": "Containers/month",
+    "promRenglones": "Avg. line items",
+    "promContenedores": "Avg. containers",
+    "ultimos5": "Last 5 files",
+    "art52": "Art. 52",
+    "art52Nota": "Art. 52 surcharge: files that arrived more than {{dias}} days ago and are still not filed. Already-filed ones are not evaluated because the filing date is not recorded.",
+    "clientesActivos": "Active clients",
+    "historialNota": "A line item is not duplicated when it reappears on another file: that file is added to the existing row. It only duplicates when the tariff line or the product code changes.",
+    "porLlegar": "Files yet to arrive",
+    "llegadosNoPresentados": "Arrived, not filed",
+    "conRecargo": "With surcharge (Art. 52)"
   },
   "notifications": {
     "title": "Notifications",
@@ -286,6 +367,27 @@
     "filterList": "Filter list",
     "exportCsv": "Export CSV",
     "recentFirst": "Most recent first",
-    "oldestFirst": "Oldest first"
+    "oldestFirst": "Oldest first",
+    "descargar": "Download",
+    "imprimir": "Print"
+  },
+  "settings": {
+    "title": "Settings",
+    "generales": "General",
+    "tasaUsd": "USD rate",
+    "tasaActualizada": "Updated: {{fecha}}",
+    "tasaNunca": "Not updated manually yet",
+    "tasaAutoNota": "Pulling the rate automatically from the DGA page needs a backend: the browser cannot read aduanas.gob.do directly (CORS).",
+    "diasArt52": "Days before Art. 52 surcharge",
+    "diasArt52Hint": "Days from arrival before the surcharge applies. Confirm the figure with the DGA.",
+    "tarifario": "Service price list",
+    "tarifarioHint": "The agency service prices, used as a quoting reference.",
+    "servicio": "Service",
+    "precio": "Price",
+    "moneda": "Currency",
+    "notas": "Notes",
+    "addTarifa": "Add price",
+    "sinNombres": "No names recorded",
+    "nuevoNombre": "Add a name"
   }
 }

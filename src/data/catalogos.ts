@@ -7,7 +7,7 @@
  * declaration number (10030-IC01-2310-0047D5 = area 10030).
  */
 
-import type { TipoDocumento, TipoEntidad } from '../types';
+import type { TipoDocumento, TipoEntidad, TipoEntidadSuplidor } from '../types';
 
 export interface Administracion {
   codigo: string;
@@ -61,17 +61,84 @@ export const findAdministracion = (codigo: string) =>
   ADMINISTRACIONES.find((a) => a.codigo === codigo);
 
 /**
- * Clearance types (SIGA "ClearanceType"), taken from the SIGA dropdown itself in the order
- * it presents them. GENERAL is the default; NO MANIFIESTO covers land borders, airports and
- * advance (anticipada) declarations. SIGA shows only labels, so the XML carries the label.
+ * Clearance types (SIGA "ClearanceType"). The IC38 codes are SIGA's import list; CENTRO
+ * LOGISTICO and COMPRA LOCAL Z.F appear in the dropdown but are not in that table, so they
+ * carry no code yet. The app stores the label; the XML emits the code when one is known.
  */
-export const TIPOS_DESPACHO = [
-  'GENERAL',
-  'NO MANIFIESTO',
-  'VENTA AL MERCADO LOCAL',
-  'ENTREGA PROVISIONAL',
-  'CENTRO LOGISTICO',
-  'COMPRA LOCAL Z.F',
+export interface TipoDespacho {
+  codigo: string;
+  nombre: string;
+}
+
+export const TIPOS_DESPACHO: TipoDespacho[] = [
+  { codigo: 'IC38-001', nombre: 'GENERAL' },
+  { codigo: 'IC38-002', nombre: 'NO MANIFIESTO' },
+  { codigo: 'IC38-003', nombre: 'ENTREGA PROVISIONAL' },
+  { codigo: 'IC38-004', nombre: 'VENTA AL MERCADO LOCAL' },
+  { codigo: '', nombre: 'CENTRO LOGISTICO' },
+  { codigo: '', nombre: 'COMPRA LOCAL Z.F' },
+];
+
+export const TIPOS_DESPACHO_LABELS = TIPOS_DESPACHO.map((t) => t.nombre);
+
+/** SIGA code for a stored clearance-type label, falling back to the label itself. */
+export const tipoDespachoCodigo = (nombre: string) =>
+  TIPOS_DESPACHO.find((t) => t.nombre === nombre)?.codigo || nombre;
+
+/** Product condition (SIGA "ProductStatusCode", IC04 table). */
+export interface EstadoProducto {
+  codigo: string;
+  nombre: string;
+}
+
+export const ESTADOS_PRODUCTO: EstadoProducto[] = [
+  { codigo: 'IC04-001', nombre: 'NUEVO' },
+  { codigo: 'IC04-002', nombre: 'USADO' },
+  { codigo: 'IC04-003', nombre: 'DESMANTELAR' },
+  { codigo: 'IC04-004', nombre: 'DESMONTAR' },
+  { codigo: 'IC04-005', nombre: 'IRREGULAR' },
+  { codigo: 'IC04-006', nombre: 'ROTO' },
+  { codigo: 'IC04-007', nombre: 'OTROS' },
+  { codigo: 'IC04-008', nombre: 'AHOGADO' },
+  { codigo: 'IC04-009', nombre: 'RECONSTRUIDO' },
+  { codigo: 'IC04-010', nombre: 'SALVAMENTO' },
+  { codigo: 'IC04-011', nombre: 'PERDIDA TOTAL' },
+];
+
+export const ESTADO_PRODUCTO_DEFAULT = 'IC04-001';
+export const findEstadoProducto = (codigo: string) => ESTADOS_PRODUCTO.find((e) => e.codigo === codigo);
+
+/**
+ * Trade agreements (SIGA "AgreementCode"); `descripcion` is the DGA's leyes referenciales text.
+ */
+export interface Acuerdo {
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+}
+
+export const ACUERDOS: Acuerdo[] = [
+  { codigo: '1', nombre: 'DR-CAFTA', descripcion: 'Tratado de Libre Comercio entre Estados Unidos, Centroamérica y Rep. Dom.' },
+  { codigo: '2', nombre: 'SGP', descripcion: 'Sistema Generalizado de Preferencias' },
+  { codigo: '3', nombre: 'EPA', descripcion: 'Acuerdo de Asociación Comercial entre la Unión Europea y el grupo de países de África, Caribe y Pacífico (ACP)' },
+  { codigo: '4', nombre: 'TLCENTROAMERICA', descripcion: 'Tratado de Libre Comercio de Centroamérica' },
+  { codigo: '5', nombre: 'TLCARICOM', descripcion: 'Tratado de Libre Comercio entre la Rep. Dominicana y el Caribe' },
+  { codigo: '6', nombre: 'AAPP', descripcion: 'Acuerdo de Alcance Parcial con Panamá' },
+  { codigo: '7', nombre: 'CBPA', descripcion: 'Acuerdo de cooperación para la cuenca del Caribe' },
+  { codigo: 'EPA - RU', nombre: 'AAE Cariforum - Reino Unido', descripcion: 'Acuerdo de Asociación Económica entre el Cariforum y el Reino Unido' },
+  { codigo: 'RD-PAN', nombre: 'Rep. Dom-Panamá', descripcion: 'Tratado comercial entre la República Dominicana y la República de Panamá (AAPP)' },
+];
+
+export const findAcuerdo = (codigo: string) => ACUERDOS.find((a) => a.codigo === codigo);
+
+/** Boilerplate the brokerage puts in every declaration's Remark. */
+export const REMARK_ESTANDAR = 'DECLARAMOS EN BASE A LA INFORMACIÓN PROPORCIONADA POR EL CLIENTE';
+
+/** SIGA "Tipo" of a registered supplier. */
+export const TIPOS_ENTIDAD_SUPLIDOR: TipoEntidadSuplidor[] = [
+  'Persona',
+  'Empresa Proveedora Exterior',
+  'Empresa Exportadora',
 ];
 
 /**
@@ -141,6 +208,9 @@ export const regimenesFor = (tipo: 'importacion' | 'exportacion') =>
   tipo === 'exportacion' ? REGIMENES_EXPORTACION : REGIMENES_IMPORTACION;
 
 export const findRegimen = (codigo: string) => REGIMENES.find((r) => r.codigo === codigo);
+
+/** Transport methods (SIGA TransportMethod). SIGA's own codes are not published. */
+export const MEDIOS_TRANSPORTE = ['MARITIMO', 'AEREO', 'TERRESTRE', 'MULTIMODAL'];
 
 export const UNIDADES = ['KILOGRAMOS', 'UNIDADES', 'LITROS', 'METROS', 'PARES', 'DOCENAS', 'TONELADAS'];
 

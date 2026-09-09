@@ -13,16 +13,17 @@ export function parseLegacyNotes(notes: string | undefined | null): Observacion[
     .map((line) => {
       const parts = line.split('|');
       if (parts.length === 1) {
-        return { id: crypto.randomUUID(), fecha: '', usuario: '', texto: line };
+        return { id: crypto.randomUUID(), fecha: '', usuario: '', texto: line, publica: false };
       }
       if (parts.length === 2) {
-        return { id: crypto.randomUUID(), fecha: toIso(parts[0]), usuario: '', texto: parts[1] };
+        return { id: crypto.randomUUID(), fecha: toIso(parts[0]), usuario: '', texto: parts[1], publica: false };
       }
       return {
         id: crypto.randomUUID(),
         fecha: toIso(parts[0]),
         usuario: parts[1],
         texto: parts.slice(2).join('|'),
+        publica: false,
       };
     });
 }
@@ -32,8 +33,8 @@ function toIso(s: string): string {
   return isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
-export function makeObservacion(usuario: string, texto: string): Observacion {
-  return { id: crypto.randomUUID(), fecha: new Date().toISOString(), usuario, texto: texto.trim() };
+export function makeObservacion(usuario: string, texto: string, publica = false): Observacion {
+  return { id: crypto.randomUUID(), fecha: new Date().toISOString(), usuario, texto: texto.trim(), publica };
 }
 
 /** Sort a copy, newest first (or oldest first). Entries without a date sort last. */

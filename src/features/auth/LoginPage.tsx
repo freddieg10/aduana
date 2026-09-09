@@ -11,8 +11,8 @@ import type { UserRole } from '../../types';
 
 const ROLE_ICON: Record<UserRole, React.ReactNode> = {
   admin: <AdminPanelSettings />,
-  agent: <SupportAgent />,
-  client: <Storefront />,
+  digitador: <SupportAgent />,
+  cliente: <Storefront />,
 };
 
 export default function LoginPage() {

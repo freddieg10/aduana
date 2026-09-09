@@ -9,7 +9,8 @@
     "reports": "Reportería",
     "importExport": "Importar / Exportar",
     "portal": "Mis Expedientes",
-    "logout": "Cerrar Sesión"
+    "logout": "Cerrar Sesión",
+    "settings": "Configuración"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -20,10 +21,10 @@
     "welcome": "Bienvenido",
     "quickLogin": "Acceso rápido (demo)",
     "role_admin": "Admin",
-    "role_agent": "Agente",
-    "role_client": "Cliente",
     "logoutTitle": "Cerrar sesión",
-    "logoutWarning": "Los datos guardados en este navegador (expedientes, relacionados y notificaciones) se borrarán y volverán a los datos de ejemplo. Exporte lo que necesite conservar antes de continuar."
+    "logoutWarning": "Los datos guardados en este navegador (expedientes, relacionados y notificaciones) se borrarán y volverán a los datos de ejemplo. Exporte lo que necesite conservar antes de continuar.",
+    "role_digitador": "Digitador",
+    "role_cliente": "Cliente"
   },
   "dashboard": {
     "title": "Panel de Control",
@@ -74,7 +75,11 @@
     "tipo_importacion": "Importación",
     "tipo_exportacion": "Exportación",
     "tipo_importacion_desc": "Despacho de mercancías importadas",
-    "tipo_exportacion_desc": "Despacho de mercancías para exportación"
+    "tipo_exportacion_desc": "Despacho de mercancías para exportación",
+    "observacionPublica": "Pública",
+    "hacerPublica": "Hacer visible para el cliente",
+    "hacerPrivada": "Ocultar al cliente",
+    "visibleParaCliente": "Visible para el cliente en el portal"
   },
   "invoice": {
     "number": "Número de Factura",
@@ -176,7 +181,54 @@
     "puertoEntradaHint": "Puertos de la tabla maestra DGA; el código UN/LOCODE se usa en el XML SIGA",
     "tipoDocumento": "Tipo Doc.",
     "documento": "Documento",
-    "documentoHint": "Documento del importador (RNC, CED, PAS o TID)"
+    "documentoHint": "Documento del importador (RNC, CED, PAS o TID)",
+    "codigoProducto": "Cód. Prod.",
+    "unitarioAuto": "Se calcula automáticamente: Valor FOB / Cantidad",
+    "sinAcuerdo": "Sin acuerdo",
+    "detalleRenglon": "Detalle del renglón",
+    "detalleProducto": "Producto",
+    "detalleCondiciones": "Condiciones y valores",
+    "detalleVehiculo": "Vehículo",
+    "marca": "Marca",
+    "modelo": "Modelo",
+    "estadoProducto": "Estado del producto",
+    "anio": "Año",
+    "pesoKg": "Peso (KG)",
+    "especificacion": "Especificación",
+    "descripcionAdicional": "Descripción adicional",
+    "serial": "No. de serie",
+    "temporal": "Producto temporal",
+    "certificadoOrigen": "Certificado de origen",
+    "certificadoOrigenNo": "No. certificado de origen",
+    "gradoAlcohol": "Grado alcohólico",
+    "precioVentaMenor": "Precio de venta al detalle",
+    "vehiculoTipo": "Tipo de vehículo",
+    "vehiculoChasis": "Chasis",
+    "vehiculoColor": "Color",
+    "vehiculoMotor": "Motor",
+    "vehiculoCc": "CC",
+    "tabInfoAdicional": "Info. Adicional",
+    "tabVuce": "VUCE",
+    "infoAdicionalHint": "Completa la hoja de registro y los campos de transporte que exige la DUA.",
+    "transportistaCodigo": "Código transportista",
+    "transportistaNombre": "Empresa transportista",
+    "transporteNacionalidad": "Nacionalidad del transporte",
+    "medioTransporte": "Medio de transporte",
+    "noViaje": "No. viaje / vuelo",
+    "manifiestoNo": "No. de manifiesto",
+    "cargoControlNo": "No. control de carga",
+    "fechaLlegadaReal": "Fecha de llegada real",
+    "fechaLlegadaRealHint": "Se usa para el cálculo del recargo Art. 52",
+    "notasHojaRegistro": "Notas para la hoja de registro",
+    "vuceHint": "Revisión local de las partidas que suelen requerir permiso. Confirme siempre en SIRE/VUCE.",
+    "noTemporalError": "Hay renglones marcados como temporales, pero el régimen \"{{regimen}}\" no es temporal.",
+    "vuceSinPermisos": "Ninguna partida de este expediente requiere permiso VUCE según las reglas registradas.",
+    "vucePermiso": "Permiso",
+    "vuceEntidad": "Entidad",
+    "vuceEstado": "Estado",
+    "vuceDocumentado": "Documentado",
+    "vucePendiente": "Pendiente",
+    "hojaRegistro": "Hoja de registro"
   },
   "status": {
     "registrado": "Registrado",
@@ -237,7 +289,15 @@
     "calle": "Calle",
     "ciudad": "Ciudad",
     "zona": "Zona",
-    "paisOrigen": "País de Origen"
+    "paisOrigen": "País de Origen",
+    "depositos": "Depósitos",
+    "addDeposito": "Nuevo Depósito",
+    "editDeposito": "Editar Depósito",
+    "depositoCodigoHint": "Código del depósito en las declaraciones",
+    "buscar": "Buscar por nombre, documento, ciudad...",
+    "enlaceAcceso": "Enlace",
+    "copiarEnlace": "Copiar enlace de acceso del cliente",
+    "enlaceCopiado": "Enlace de acceso copiado. Compártalo con el cliente:"
   },
   "portal": {
     "title": "Portal de Clientes",
@@ -248,7 +308,9 @@
     "noExpedientes": "No tiene expedientes registrados.",
     "notLinked": "Su usuario no está vinculado a un cliente. Contacte al agente aduanal.",
     "statusTimeline": "Etapa del despacho",
-    "backToList": "Volver a mis expedientes"
+    "backToList": "Volver a mis expedientes",
+    "enlaceInvalido": "El enlace de acceso no es válido o ha expirado.",
+    "verificandoEnlace": "Verificando su enlace de acceso..."
   },
   "reports": {
     "title": "Reportería",
@@ -262,7 +324,26 @@
     "summary": "Resumen",
     "byStatus": "Por Estado",
     "byClient": "Por Cliente",
-    "totalAmount": "Monto Total"
+    "totalAmount": "Monto Total",
+    "tabClientes": "Clientes",
+    "tabDigitador": "Digitadores",
+    "tabGestor": "Gestores",
+    "tabProductos": "Historial de productos",
+    "tabEstatus": "Estatus de expedientes",
+    "sinAcceso": "Su usuario no tiene acceso a reportería.",
+    "expedientes": "Expedientes",
+    "expedientesMes": "Expedientes/mes",
+    "contenedoresMes": "Contenedores/mes",
+    "promRenglones": "Prom. renglones",
+    "promContenedores": "Prom. contenedores",
+    "ultimos5": "Últimos 5 expedientes",
+    "art52": "Art. 52",
+    "art52Nota": "Recargo Art. 52: expedientes llegados hace más de {{dias}} días y aún no presentados. Los ya presentados no se evalúan porque no se registra la fecha de presentación.",
+    "clientesActivos": "Clientes activos",
+    "historialNota": "Un renglón no se duplica al repetirse en otro expediente: se agrega el expediente a la fila existente. Solo se duplica si cambia la partida o el código de producto.",
+    "porLlegar": "Expedientes por llegar",
+    "llegadosNoPresentados": "Llegados no presentados",
+    "conRecargo": "Con recargo (Art. 52)"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -286,6 +367,27 @@
     "filterList": "Filtrar lista",
     "exportCsv": "Exportar CSV",
     "recentFirst": "Más reciente primero",
-    "oldestFirst": "Más antiguo primero"
+    "oldestFirst": "Más antiguo primero",
+    "descargar": "Descargar",
+    "imprimir": "Imprimir"
+  },
+  "settings": {
+    "title": "Configuración",
+    "generales": "Generales",
+    "tasaUsd": "Tasa USD",
+    "tasaActualizada": "Actualizada: {{fecha}}",
+    "tasaNunca": "Aún no se ha actualizado manualmente",
+    "tasaAutoNota": "La actualización automática desde la página de la DGA requiere un backend: el navegador no puede leer aduanas.gob.do directamente (CORS).",
+    "diasArt52": "Días para recargo Art. 52",
+    "diasArt52Hint": "Días desde la llegada antes de que aplique el recargo. Confirme el valor con la DGA.",
+    "tarifario": "Tarifario de servicios",
+    "tarifarioHint": "Precios de los servicios de la agencia. Se usan como referencia para cotizar.",
+    "servicio": "Servicio",
+    "precio": "Precio",
+    "moneda": "Moneda",
+    "notas": "Notas",
+    "addTarifa": "Agregar tarifa",
+    "sinNombres": "Sin nombres registrados",
+    "nuevoNombre": "Agregar nombre"
   }
 }

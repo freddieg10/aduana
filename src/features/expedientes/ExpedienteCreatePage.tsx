@@ -9,6 +9,7 @@ import type { ExpedienteFormData, Observacion, TipoExpediente } from '../../type
 import { makeDefaultChecklist } from '../../data/catalogos';
 import { makeObservacion } from '../../utils/observaciones';
 import { emptyFormData } from '../../utils/expedienteDefaults';
+import { useSettingsStore } from '../../store/settingsStore';
 import ExpedienteForm from '../../components/ExpedienteForm';
 import ObservationsTimeline from '../../components/ObservationsTimeline';
 
@@ -20,7 +21,11 @@ export default function ExpedienteCreatePage() {
   const create = useExpedientesStore((s) => s.create);
 
   const tipoFromUrl = (searchParams.get('tipo') as TipoExpediente) || 'importacion';
-  const [form, setForm] = useState<ExpedienteFormData>(() => emptyFormData(tipoFromUrl));
+  const tasaUsd = useSettingsStore((s) => s.tasaUsd);
+  const [form, setForm] = useState<ExpedienteFormData>(() => {
+    const base = emptyFormData(tipoFromUrl);
+    return { ...base, valores: { ...base.valores, tasaCambio: tasaUsd } };
+  });
   const [observaciones, setObservaciones] = useState<Observacion[]>([]);
   const [success, setSuccess] = useState(false);
 
@@ -58,7 +63,8 @@ export default function ExpedienteCreatePage() {
         <CardContent>
           <ObservationsTimeline
             items={observaciones}
-            onAdd={(texto) => setObservaciones((prev) => [...prev, makeObservacion(usuario, texto)])}
+            onAdd={(texto, publica) => setObservaciones((prev) => [...prev, makeObservacion(usuario, texto, publica)])}
+            onTogglePublica={(id) => setObservaciones((prev) => prev.map((o) => (o.id === id ? { ...o, publica: !o.publica } : o)))}
             onEdit={(id, texto) => setObservaciones((prev) => prev.map((o) => (o.id === id ? { ...o, texto } : o)))}
             onDelete={(id) => setObservaciones((prev) => prev.filter((o) => o.id !== id))}
           />

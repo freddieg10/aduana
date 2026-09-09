@@ -165,7 +165,7 @@ export default function ClientPortalDetailPage() {
 
           <Card>
             <CardContent>
-              <ObservationsTimeline items={expediente.observaciones} readOnly />
+              <ObservationsTimeline items={expediente.observaciones.filter((o) => o.publica)} readOnly />
             </CardContent>
           </Card>
         </Grid>

@@ -55,6 +55,7 @@ export default function ExpedienteListPage() {
   const addObservacion = useExpedientesStore((s) => s.addObservacion);
   const updateObservacion = useExpedientesStore((s) => s.updateObservacion);
   const removeObservacion = useExpedientesStore((s) => s.removeObservacion);
+  const toggleObservacionPublica = useExpedientesStore((s) => s.toggleObservacionPublica);
   const currentUser = useAuthStore((s) => s.user);
 
   /* Column-level filters */
@@ -301,9 +302,10 @@ export default function ExpedienteListPage() {
             <ObservationsTimeline
               hideTitle
               items={obsExpediente.observaciones}
-              onAdd={(texto) => addObservacion(obsExpediente.id, usuario, texto)}
+              onAdd={(texto, publica) => addObservacion(obsExpediente.id, usuario, texto, publica)}
               onEdit={(obsId, texto) => updateObservacion(obsExpediente.id, obsId, texto)}
               onDelete={(obsId) => removeObservacion(obsExpediente.id, obsId)}
+              onTogglePublica={(obsId) => toggleObservacionPublica(obsExpediente.id, obsId)}
             />
           )}
         </DialogContent>

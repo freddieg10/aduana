@@ -40,6 +40,7 @@ import {
   LightMode,
   People,
   Inventory2,
+  Settings as SettingsIcon,
 } from "@mui/icons-material";
 import { useAuthStore } from "../store/authStore";
 import { useNotificationStore } from "../store/notificationStore";
@@ -49,7 +50,7 @@ import type { UserRole } from "../types";
 
 const DRAWER_WIDTH = 280;
 
-const STAFF: UserRole[] = ["admin", "agent"];
+const STAFF: UserRole[] = ["admin", "digitador"];
 
 const NAV_ITEMS: { key: string; path: string; icon: React.ReactNode; roles: UserRole[] }[] = [
   { key: "dashboard", path: "/dashboard", icon: <Dashboard />, roles: STAFF },
@@ -57,7 +58,8 @@ const NAV_ITEMS: { key: string; path: string; icon: React.ReactNode; roles: User
   { key: "relacionados", path: "/relacionados", icon: <People />, roles: STAFF },
   { key: "reports", path: "/reports", icon: <Assessment />, roles: STAFF },
   { key: "importExport", path: "/import-export", icon: <ImportExport />, roles: STAFF },
-  { key: "portal", path: "/portal", icon: <Inventory2 />, roles: ["client"] },
+  { key: "settings", path: "/settings", icon: <SettingsIcon />, roles: ["admin"] },
+  { key: "portal", path: "/portal", icon: <Inventory2 />, roles: ["cliente"] },
 ];
 
 export default function Layout() {
@@ -79,7 +81,7 @@ export default function Layout() {
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
-  const isClient = user?.role === "client";
+  const isClient = user?.role === "cliente";
   const navItems = NAV_ITEMS.filter((n) => user && n.roles.includes(user.role));
 
   /** Logging out wipes the data persisted for the session, so it is confirmed first. */

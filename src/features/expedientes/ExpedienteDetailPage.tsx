@@ -5,7 +5,7 @@ import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, FormControlLabel, LinearProgress, Typography,
 } from '@mui/material';
-import { ArrowBack, Save, Delete, FlightLand, FlightTakeoff, Person, SupportAgent } from '@mui/icons-material';
+import { ArrowBack, Save, Delete, FlightLand, FlightTakeoff, Person, SupportAgent, Article } from '@mui/icons-material';
 import { useExpedientesStore, computeProgress } from '../../store/expedientesStore';
 import { useAuthStore } from '../../store/authStore';
 import { ExpedienteStatus } from '../../types';
@@ -14,6 +14,7 @@ import { fmtDate } from '../../utils/date';
 import { toFormData } from '../../utils/expedienteDefaults';
 import ExpedienteForm from '../../components/ExpedienteForm';
 import ObservationsTimeline from '../../components/ObservationsTimeline';
+import HojaRegistroDialog from '../../components/HojaRegistroDialog';
 
 export default function ExpedienteDetailPage() {
   const { t } = useTranslation();
@@ -27,10 +28,12 @@ export default function ExpedienteDetailPage() {
   const addObservacion = useExpedientesStore((s) => s.addObservacion);
   const updateObservacion = useExpedientesStore((s) => s.updateObservacion);
   const removeObservacion = useExpedientesStore((s) => s.removeObservacion);
+  const toggleObservacionPublica = useExpedientesStore((s) => s.toggleObservacionPublica);
 
   const [form, setForm] = useState<ExpedienteFormData | null>(() => (expediente ? toFormData(expediente) : null));
   const [saved, setSaved] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [hojaOpen, setHojaOpen] = useState(false);
 
   if (!expediente || !form) {
     return (
@@ -90,6 +93,7 @@ export default function ExpedienteDetailPage() {
         />
         <Chip label={t(`status.${expediente.status}`)} color={expediente.status === ExpedienteStatus.Completo ? 'success' : 'primary'} />
         <Typography variant="body2" sx={{ fontWeight: 600 }}>{progress}%</Typography>
+        <Button variant="outlined" startIcon={<Article />} onClick={() => setHojaOpen(true)}>{t('detail.hojaRegistro')}</Button>
         <Button variant="contained" startIcon={<Save />} onClick={handleSave}>{t('expediente.save')}</Button>
         <Button variant="outlined" color="error" startIcon={<Delete />} onClick={() => setDeleteConfirmOpen(true)}>{t('expediente.delete')}</Button>
       </Box>
@@ -119,12 +123,15 @@ export default function ExpedienteDetailPage() {
         <CardContent>
           <ObservationsTimeline
             items={expediente.observaciones}
-            onAdd={(texto) => addObservacion(expediente.id, usuario, texto)}
+            onAdd={(texto, publica) => addObservacion(expediente.id, usuario, texto, publica)}
             onEdit={(obsId, texto) => updateObservacion(expediente.id, obsId, texto)}
             onDelete={(obsId) => removeObservacion(expediente.id, obsId)}
+            onTogglePublica={(obsId) => toggleObservacionPublica(expediente.id, obsId)}
           />
         </CardContent>
       </Card>
+
+      {hojaOpen && <HojaRegistroDialog expediente={expediente} onClose={() => setHojaOpen(false)} />}
 
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
         <DialogTitle>{t('expediente.delete')}</DialogTitle>

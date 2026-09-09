@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Cliente, SuplidorMaestro, TipoDocumento, TipoEntidad } from '../types';
+import type { Cliente, Deposito, SuplidorMaestro, TipoDocumento, TipoEntidad, TipoEntidadSuplidor } from '../types';
 import { PAIS_RD } from '../data/catalogos';
 import { clienteKey, normalizeDocumento, TIPO_DOCUMENTO_DEFAULT } from '../utils/documento';
 
@@ -18,16 +18,29 @@ const SEED_CLIENTES: Cliente[] = [
 ];
 
 const SEED_SUPLIDORES: SuplidorMaestro[] = [
-  { id: 'sp-1', codigo: 'SUP-01', nombre: 'Mumbai Textiles Co.', tid: 'IN-AAACM1234A', direccion: 'Mumbai, Maharashtra', telefono: '+91 22 5555 0001', fax: '', pais: '356' },
-  { id: 'sp-2', codigo: 'SUP-02', nombre: 'Shenzhen Electronics Ltd', tid: 'CN-91440300MA5', direccion: 'Nanshan District, Shenzhen', telefono: '+86 755 5555 0002', fax: '+86 755 5555 0003', pais: '156' },
-  { id: 'sp-3', codigo: 'SUP-03', nombre: 'Bangkok Foods Export', tid: 'TH-0105555000031', direccion: 'Bangkok', telefono: '+66 2 555 0003', fax: '', pais: '764' },
-  { id: 'sp-4', codigo: 'SUP-04', nombre: 'Hamburg Auto GmbH', tid: 'DE123456789', direccion: 'Hamburg', telefono: '+49 40 555 0004', fax: '+49 40 555 0005', pais: '276' },
-  { id: 'sp-5', codigo: 'SUP-05', nombre: 'Basel Pharma AG', tid: 'CHE-123.456.789', direccion: 'Basel', telefono: '+41 61 555 0005', fax: '', pais: '756' },
+  { id: 'sp-1', tipo: 'Empresa Proveedora Exterior', tipoDocumento: 'TID', documento: 'IN-AAACM1234A', nombre: 'Mumbai Textiles Co.', email: 'sales@mumbaitextiles.in', calle: 'Andheri East', ciudad: 'Mumbai', telefono: '+91 22 5555 0001', zona: 'Maharashtra', fax: '', pais: '356' },
+  { id: 'sp-2', tipo: 'Empresa Proveedora Exterior', tipoDocumento: 'TID', documento: 'CN-91440300MA5', nombre: 'Shenzhen Electronics Ltd', email: 'export@szelectronics.cn', calle: 'Nanshan District', ciudad: 'Shenzhen', telefono: '+86 755 5555 0002', zona: 'Guangdong', fax: '+86 755 5555 0003', pais: '156' },
+  { id: 'sp-3', tipo: 'Empresa Exportadora', tipoDocumento: 'TID', documento: 'TH-0105555000031', nombre: 'Bangkok Foods Export', email: 'info@bkkfoods.th', calle: 'Sathorn', ciudad: 'Bangkok', telefono: '+66 2 555 0003', zona: '', fax: '', pais: '764' },
+  { id: 'sp-4', tipo: 'Empresa Proveedora Exterior', tipoDocumento: 'TID', documento: 'DE123456789', nombre: 'Hamburg Auto GmbH', email: 'kontakt@hamburgauto.de', calle: 'Hafenstrasse 12', ciudad: 'Hamburg', telefono: '+49 40 555 0004', zona: '', fax: '+49 40 555 0005', pais: '276' },
+  { id: 'sp-5', tipo: 'Empresa Proveedora Exterior', tipoDocumento: 'TID', documento: 'CHE-123.456.789', nombre: 'Basel Pharma AG', email: 'export@baselpharma.ch', calle: 'Rheinweg 3', ciudad: 'Basel', telefono: '+41 61 555 0005', zona: '', fax: '', pais: '756' },
+];
+
+/** Bonded warehouses, used for `declaracion.depositoDestino` (SIGA DestinationLocationCode). */
+const SEED_DEPOSITOS: Deposito[] = [
+  { id: 'dp-1', codigo: 'ALMACARIBE', nombre: 'Almacenes Generales del Caribe, S. A.', administracionCodigo: '10030', ciudad: 'Santo Domingo', telefono: '' },
+  { id: 'dp-2', codigo: 'ALMATRANS', nombre: 'Almacenes Generales de Deposito y Distribucion', administracionCodigo: '10030', ciudad: 'Santo Domingo', telefono: '' },
+  { id: 'dp-3', codigo: 'RODEMSA', nombre: 'Almacenes Rodem S. A.', administracionCodigo: '10030', ciudad: 'Santo Domingo', telefono: '' },
+  { id: 'dp-4', codigo: 'ALMADOM', nombre: 'Almacenes Dominicanos de Deposito, S. A.', administracionCodigo: '10030', ciudad: 'Santo Domingo', telefono: '' },
+  { id: 'dp-5', codigo: 'ALFRIDOMSA', nombre: 'Alfridomsa Multimodal Caucedo', administracionCodigo: '10150', ciudad: 'Caucedo', telefono: '' },
+  { id: 'dp-6', codigo: 'ALMADISA', nombre: 'Almadisa', administracionCodigo: '10150', ciudad: 'Santo Domingo Este', telefono: '' },
+  { id: 'dp-7', codigo: 'ALMANORTE', nombre: 'Almanorte', administracionCodigo: '20020', ciudad: 'Santiago', telefono: '' },
+  { id: 'dp-8', codigo: 'ALMADELA-STI', nombre: 'Almadela Santiago', administracionCodigo: '20020', ciudad: 'Santiago', telefono: '' },
 ];
 
 interface RelacionadosState {
   clientes: Cliente[];
   suplidores: SuplidorMaestro[];
+  depositos: Deposito[];
   addCliente: (c: Omit<Cliente, 'id'>) => Cliente;
   updateCliente: (id: string, c: Partial<Cliente>) => void;
   removeCliente: (id: string) => void;
@@ -38,8 +51,33 @@ interface RelacionadosState {
   findClienteByDocumento: (tipoDocumento: TipoDocumento, documento: string) => Cliente | undefined;
   /** True when another cliente already uses this document — the PK guard for the form. */
   documentoTaken: (tipoDocumento: TipoDocumento, documento: string, exceptId?: string) => boolean;
-  findSuplidorByCodigo: (codigo: string) => SuplidorMaestro | undefined;
+  /** Look a suplidor up by document number (also matches a legacy code left on an expediente). */
+  findSuplidorByDocumento: (documento: string) => SuplidorMaestro | undefined;
+  suplidorDocumentoTaken: (tipoDocumento: TipoDocumento, documento: string, exceptId?: string) => boolean;
+  addDeposito: (d: Omit<Deposito, 'id'>) => Deposito;
+  updateDeposito: (id: string, d: Partial<Deposito>) => void;
+  removeDeposito: (id: string) => void;
   resetToSeed: () => void;
+}
+
+/** v2 -> v3: suplidores moved to the SIGA proveedor form, keyed by (tipoDocumento, documento). */
+export function migrateSuplidor(raw: Record<string, unknown>): SuplidorMaestro {
+  const c = raw as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  return {
+    id: str(c.id) || crypto.randomUUID(),
+    tipo: (str(c.tipo) || 'Empresa Proveedora Exterior') as TipoEntidadSuplidor,
+    tipoDocumento: (str(c.tipoDocumento) || 'TID') as TipoDocumento,
+    documento: str(c.documento) || str(c.tid) || str(c.codigo),
+    nombre: str(c.nombre),
+    email: str(c.email),
+    calle: str(c.calle) || str(c.direccion),
+    ciudad: str(c.ciudad),
+    telefono: str(c.telefono),
+    zona: str(c.zona),
+    fax: str(c.fax),
+    pais: str(c.pais),
+  };
 }
 
 /**
@@ -71,6 +109,7 @@ export const useRelacionadosStore = create<RelacionadosState>()(
     (set, get) => ({
       clientes: SEED_CLIENTES,
       suplidores: SEED_SUPLIDORES,
+      depositos: SEED_DEPOSITOS,
 
       addCliente: (c) => {
         const nuevo = { ...c, id: crypto.randomUUID() };
@@ -98,19 +137,40 @@ export const useRelacionadosStore = create<RelacionadosState>()(
         const key = clienteKey({ tipoDocumento, documento });
         return get().clientes.some((c) => c.id !== exceptId && clienteKey(c) === key);
       },
-      findSuplidorByCodigo: (codigo) => get().suplidores.find((s) => s.codigo === codigo),
+      findSuplidorByDocumento: (documento) => {
+        const n = normalizeDocumento(documento);
+        return n ? get().suplidores.find((s) => normalizeDocumento(s.documento) === n) : undefined;
+      },
+      suplidorDocumentoTaken: (tipoDocumento, documento, exceptId) => {
+        if (!normalizeDocumento(documento)) return false;
+        const key = clienteKey({ tipoDocumento, documento });
+        return get().suplidores.some((s) => s.id !== exceptId && clienteKey(s) === key);
+      },
 
-      resetToSeed: () => set({ clientes: SEED_CLIENTES, suplidores: SEED_SUPLIDORES }),
+      addDeposito: (d) => {
+        const nuevo = { ...d, id: crypto.randomUUID() };
+        set((s) => ({ depositos: [...s.depositos, nuevo] }));
+        return nuevo;
+      },
+      updateDeposito: (id, d) => set((s) => ({ depositos: s.depositos.map((x) => (x.id === id ? { ...x, ...d } : x)) })),
+      removeDeposito: (id) => set((s) => ({ depositos: s.depositos.filter((x) => x.id !== id) })),
+
+      resetToSeed: () => set({ clientes: SEED_CLIENTES, suplidores: SEED_SUPLIDORES, depositos: SEED_DEPOSITOS }),
     }),
     {
       name: 'aduana-relacionados',
-      version: 2,
-      partialize: (s) => ({ clientes: s.clientes, suplidores: s.suplidores }),
+      version: 3,
+      partialize: (s) => ({ clientes: s.clientes, suplidores: s.suplidores, depositos: s.depositos }),
       migrate: (persisted) => {
-        const state = persisted as { clientes?: Record<string, unknown>[]; suplidores?: SuplidorMaestro[] };
+        const state = persisted as {
+          clientes?: Record<string, unknown>[];
+          suplidores?: Record<string, unknown>[];
+          depositos?: Deposito[];
+        };
         return {
           clientes: (state.clientes ?? []).map(migrateCliente),
-          suplidores: state.suplidores ?? SEED_SUPLIDORES,
+          suplidores: (state.suplidores ?? []).map(migrateSuplidor),
+          depositos: state.depositos ?? SEED_DEPOSITOS,
         };
       },
     },

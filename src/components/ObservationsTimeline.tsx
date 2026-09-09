@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Button, IconButton, TextField, Typography } from '@mui/material';
-import { AddComment, Delete, Edit as EditIcon, SwapVert } from '@mui/icons-material';
+import { Box, Button, Chip, FormControlLabel, IconButton, Switch, TextField, Tooltip, Typography } from '@mui/material';
+import { AddComment, Delete, Edit as EditIcon, SwapVert, Visibility, VisibilityOff } from '@mui/icons-material';
 import type { Observacion } from '../types';
 import { fmtDateTime } from '../utils/date';
 import { sortObservaciones } from '../utils/observaciones';
 
 interface Props {
   items: Observacion[];
-  onAdd?: (texto: string) => void;
+  onAdd?: (texto: string, publica: boolean) => void;
+  /** Toggles whether the client portal shows an observation. Omit to hide the control. */
+  onTogglePublica?: (id: string) => void;
   onEdit?: (id: string, texto: string) => void;
   onDelete?: (id: string) => void;
   readOnly?: boolean;
@@ -20,10 +22,11 @@ interface Props {
  * Twitter-style chronological feed of observations with inline add / edit / delete.
  * Stateless with respect to the data: the parent owns `items` and receives callbacks.
  */
-export default function ObservationsTimeline({ items, onAdd, onEdit, onDelete, readOnly = false, hideTitle = false }: Props) {
+export default function ObservationsTimeline({ items, onAdd, onEdit, onDelete, onTogglePublica, readOnly = false, hideTitle = false }: Props) {
   const { t } = useTranslation();
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [newText, setNewText] = useState('');
+  const [newPublica, setNewPublica] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
@@ -34,8 +37,9 @@ export default function ObservationsTimeline({ items, onAdd, onEdit, onDelete, r
 
   const submitAdd = () => {
     if (!newText.trim() || !onAdd) return;
-    onAdd(newText.trim());
+    onAdd(newText.trim(), newPublica);
     setNewText('');
+    setNewPublica(false);
   };
 
   const submitEdit = (id: string) => {
@@ -70,9 +74,12 @@ export default function ObservationsTimeline({ items, onAdd, onEdit, onDelete, r
               }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                    {o.fecha ? fmtDateTime(o.fecha) : ''}{o.usuario ? ` · ${o.usuario}` : ''}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {o.fecha ? fmtDateTime(o.fecha) : ''}{o.usuario ? ` · ${o.usuario}` : ''}
+                    </Typography>
+                    {o.publica && <Chip size="small" color="info" variant="outlined" label={t('expediente.observacionPublica')} sx={{ height: 20 }} />}
+                  </Box>
                   {editingId === o.id ? (
                     <Box>
                       <TextField fullWidth size="small" multiline rows={2} value={editText} onChange={(e) => setEditText(e.target.value)} autoFocus />
@@ -85,8 +92,15 @@ export default function ObservationsTimeline({ items, onAdd, onEdit, onDelete, r
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{o.texto}</Typography>
                   )}
                 </Box>
-                {editingId !== o.id && (canEdit || canDelete) && (
+                {editingId !== o.id && (canEdit || canDelete || onTogglePublica) && (
                   <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                    {!readOnly && onTogglePublica && (
+                      <Tooltip title={o.publica ? t('expediente.hacerPrivada') : t('expediente.hacerPublica')}>
+                        <IconButton size="small" color={o.publica ? 'info' : 'default'} onClick={() => onTogglePublica(o.id)}>
+                          {o.publica ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     {canEdit && (
                       <IconButton size="small" onClick={() => { setEditingId(o.id); setEditText(o.texto); }}>
                         <EditIcon fontSize="small" />
@@ -108,17 +122,26 @@ export default function ObservationsTimeline({ items, onAdd, onEdit, onDelete, r
       )}
 
       {canAdd && (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-          <TextField
-            fullWidth size="small" multiline rows={2}
-            placeholder={t('expediente.newObservation')}
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitAdd(); }}
-          />
-          <Button variant="contained" size="small" startIcon={<AddComment />} disabled={!newText.trim()} onClick={submitAdd} sx={{ mt: 0.5, whiteSpace: 'nowrap' }}>
-            {t('expediente.addObservations')}
-          </Button>
+        <Box>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <TextField
+              fullWidth size="small" multiline rows={2}
+              placeholder={t('expediente.newObservation')}
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitAdd(); }}
+            />
+            <Button variant="contained" size="small" startIcon={<AddComment />} disabled={!newText.trim()} onClick={submitAdd} sx={{ mt: 0.5, whiteSpace: 'nowrap' }}>
+              {t('expediente.addObservations')}
+            </Button>
+          </Box>
+          {onTogglePublica && (
+            <FormControlLabel
+              sx={{ mt: 0.5 }}
+              control={<Switch size="small" checked={newPublica} onChange={() => setNewPublica(!newPublica)} />}
+              label={<Typography variant="caption">{t('expediente.visibleParaCliente')}</Typography>}
+            />
+          )}
         </Box>
       )}
     </Box>
