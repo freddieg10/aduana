@@ -118,7 +118,9 @@ function impDeclaration(e: Expediente, now: Date): string {
     el('HSCode', {}, p.codigoPartida, D + 2),
     el('ProductCode', {}, p.codigoProducto, D + 2),
     el('ProductName', {}, p.descripcion, D + 2),
+    el('BrandCode', {}, '', D + 2),
     el('BrandName', {}, p.marca || 'N/A', D + 2),
+    el('ModelCode', {}, '', D + 2),
     el('ModelName', {}, p.modelo || 'N/A', D + 2),
     el('ProductStatusCode', {}, p.estadoProducto, D + 2),
     el('ProductYear', {}, p.anio, D + 2),
@@ -155,6 +157,7 @@ function impDeclaration(e: Expediente, now: Date): string {
     el('ContainerNo', {}, c.numero, D + 2),
     el('SealNo1', {}, c.sello1, D + 2),
     el('SealNo2', {}, c.sello2, D + 2),
+    el('ContainerPlate', {}, '', D + 2),
   ], D + 1));
 
   return el('ImpDeclaration', {}, [
@@ -208,7 +211,9 @@ function expDeclaration(e: Expediente, now: Date): string {
     el('HSCode', {}, p.codigoPartida, D + 2),
     el('ProductCode', {}, p.codigoProducto, D + 2),
     el('ProductName', {}, p.descripcion, D + 2),
+    el('BrandCode', {}, '', D + 2),
     el('BrandName', {}, p.marca || 'N/A', D + 2),
+    el('ModelCode', {}, '', D + 2),
     el('ModelName', {}, p.modelo || 'N/A', D + 2),
     el('ProductStatusCode', {}, p.estadoProducto, D + 2),
     el('ProductYear', {}, p.anio, D + 2),
@@ -223,7 +228,13 @@ function expDeclaration(e: Expediente, now: Date): string {
     el('OriginCountry', {}, countryCode(p.paisOrigen) || PAIS_RD, D + 2),
     el('OrganicYN', {}, bool(p.organico), D + 2),
     el('GradeAlcohol', {}, num(p.gradoAlcohol), D + 2),
+    el('CustomerSalesPrice', {}, num(p.precioVentaMenor), D + 2),
     el('ProductSerialNo', {}, p.serial, D + 2),
+    el('VehicleType', {}, p.vehiculo.tipo, D + 2),
+    el('VehicleChassis', {}, p.vehiculo.chasis, D + 2),
+    el('VehicleColor', {}, p.vehiculo.color, D + 2),
+    el('VehicleMotor', {}, p.vehiculo.motor, D + 2),
+    el('VehicleCC', {}, String(p.vehiculo.cc), D + 2),
     el('ProductDescription', {}, p.descripcionAdicional || p.descripcion, D + 2),
   ], D + 1));
 
@@ -232,6 +243,7 @@ function expDeclaration(e: Expediente, now: Date): string {
     el('ContainerNo', {}, c.numero, D + 2),
     el('SealNo1', {}, c.sello1, D + 2),
     el('SealNo2', {}, c.sello2, D + 2),
+    el('ContainerPlate', {}, '', D + 2),
   ], D + 1));
 
   return el('ExpDeclaration', {}, [

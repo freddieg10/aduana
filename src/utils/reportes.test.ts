@@ -6,6 +6,7 @@ import { emptyInformacionAdicional } from '../store/expedientesStore';
 import { reporteClientes, reporteDigitadores, historialProductos, historialToCsv, enRango } from './reportes';
 import { evaluarArt52, porLlegar, llegadosNoPresentados } from './art52';
 import { validarVuce, validarNoTemporal, capituloDe } from './vuce';
+import { exigeArticuloRegistrado } from '../data/subpartidasNoTemporales';
 import { can, canAny } from './permisos';
 
 const partida = (over: Partial<ReturnType<typeof emptyPartida>> = {}) =>
@@ -176,10 +177,31 @@ describe('VUCE', () => {
     expect(hallazgos[0].entidad).toContain('DIGEMAPS');
   });
 
-  it('only allows temporary lines under a temporary regime', () => {
-    const partidas = [partida({ id: 'a', temporal: true }), partida({ id: 'b' })];
-    expect(validarNoTemporal({ partidas, regimenAduanero: { codigo: '1', nombre: 'CONSUMO', acuerdo: '' } })).toHaveLength(1);
-    expect(validarNoTemporal({ partidas, regimenAduanero: { codigo: '2', nombre: 'ADMISION TEMPORAL', acuerdo: '' } })).toHaveLength(0);
+  /* 8415.10.00 is on the DGA list of subpartidas that do not admit temporary products;
+     4818.30.00 is not. */
+  it('rejects a temporary line on a subheading that does not admit one', () => {
+    const hallazgos = validarNoTemporal({ partidas: [
+      partida({ id: 'a', codigoPartida: '8415.10.00', codigoProducto: 'ART-1', temporal: true }),
+      partida({ id: 'b', codigoPartida: '4818.30.00', temporal: true }),
+    ] });
+    expect(hallazgos).toHaveLength(1);
+    expect(hallazgos[0].motivo).toBe('temporal');
+  });
+
+  it('demands the product article number on those subheadings', () => {
+    const hallazgos = validarNoTemporal({ partidas: [
+      partida({ id: 'a', codigoPartida: '8415.10.00', codigoProducto: '' }),
+      partida({ id: 'b', codigoPartida: '8415.10.00', codigoProducto: 'ART-2' }),
+    ] });
+    expect(hallazgos).toHaveLength(1);
+    expect(hallazgos[0].motivo).toBe('sinArticulo');
+  });
+
+  it('reads the list with or without dots and leaves other subheadings alone', () => {
+    expect(exigeArticuloRegistrado('8415.10.00')).toBe(true);
+    expect(exigeArticuloRegistrado('84151000')).toBe(true);
+    expect(exigeArticuloRegistrado('4818.30.00')).toBe(false);
+    expect(exigeArticuloRegistrado('')).toBe(false);
   });
 });
 

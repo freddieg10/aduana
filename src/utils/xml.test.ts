@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { buildFullXml, buildSigaImportXml, buildSigaExportXml, buildSigaXmlFiles, escapeXml, SIGA_NS_IMPORT, SIGA_NS_EXPORT } from './xml';
 import { ExpedienteStatus } from '../types';
 import type { Expediente } from '../types';
@@ -171,5 +172,73 @@ describe('buildSigaXmlFiles', () => {
 
   it('returns nothing for an empty selection', () => {
     expect(buildSigaXmlFiles([], NOW)).toEqual([]);
+  });
+});
+
+/*
+ * Both DUA schemas are xs:sequence, so a builder that emits the right elements in the wrong
+ * order produces a file SIGA rejects. Rather than freeze the order in a literal that drifts,
+ * check the emitted order against the XSD itself: inside every block, the elements the builder
+ * writes must appear in the schema's order, with nothing the schema does not declare.
+ */
+describe('SIGA element order matches the XSD sequence', () => {
+  /**
+   * parent element -> its direct children, in declaration order. A tag that closes itself is a
+   * leaf; anything else opens a block, so a stack of names is enough to nest them.
+   */
+  function bloques(texto: string, abre: RegExp, cierra: RegExp): Map<string, string[]> {
+    const out = new Map<string, string[]>([['', []]]);
+    const pila: string[] = [''];
+    const token = new RegExp(`${abre.source}|${cierra.source}`, 'g');
+    for (const m of texto.matchAll(token)) {
+      if (m[1] === undefined) { if (pila.length > 1) pila.pop(); continue; }
+      out.get(pila[pila.length - 1])!.push(m[1]);
+      if (!m[0].endsWith('/>')) { pila.push(m[1]); out.set(m[1], out.get(m[1]) ?? []); }
+    }
+    return out;
+  }
+
+  /* Only </xs:element> closes a block here; the complexType and sequence wrappers around it
+     are scaffolding and must not pop the stack. */
+  const xsdBlocks = (file: string) => bloques(
+    readFileSync(new URL(`../../docs/siga-xsd/${file}`, import.meta.url), 'utf8'),
+    /<xs:element\b[^>]*?\bname="([A-Za-z0-9_]+)"[^>]*>/,
+    /<\/xs:element>/,
+  );
+
+  const xmlBlocks = (xml: string) => bloques(
+    xml,
+    /<([A-Za-z][A-Za-z0-9_]*)\b[^>]*>/,
+    /<\/[A-Za-z][A-Za-z0-9_]*>/,
+  );
+
+  /** Every emitted child must exist in the schema block and follow the schema order. */
+  function desorden(xml: Map<string, string[]>, xsd: Map<string, string[]>): string[] {
+    const fallas: string[] = [];
+    for (const [padre, hijos] of xml) {
+      if (hijos.length === 0) continue;
+      const esquema = xsd.get(padre);
+      if (!esquema) continue;                      // root wrapper, not declared as an element
+      let i = -1;
+      for (const hijo of new Set(hijos)) {          // each name appears once per block
+        const j = esquema.indexOf(hijo);
+        if (j < 0) fallas.push(`${padre}/${hijo} no existe en el XSD`);
+        else if (j <= i) fallas.push(`${padre}/${hijo} está fuera de orden`);
+        else i = j;
+      }
+    }
+    return fallas;
+  }
+
+  it('importación', () => {
+    const xsd = xsdBlocks('ImportDUA.xsd');
+    expect(desorden(xmlBlocks(buildSigaImportXml([sample], NOW)), xsd)).toEqual([]);
+    // The guard has teeth only if it sees the elements: the header block must be checked.
+    expect(xsd.get('ImpDeclaration')).toContain('AreaCode');
+  });
+
+  it('exportación', () => {
+    const e = { ...sample, tipoExpediente: 'exportacion' as const };
+    expect(desorden(xmlBlocks(buildSigaExportXml([e], NOW)), xsdBlocks('ExportDUA.xsd'))).toEqual([]);
   });
 });

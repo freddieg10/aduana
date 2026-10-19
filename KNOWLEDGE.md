@@ -129,9 +129,9 @@ Source: product notes from Freddie, 2026-09-03 (SIGA screens + backlog). Done it
 ### Expedientes — done
 - [x] **Tab Información adicional** — transportista (código, nombre, nacionalidad), medio de transporte, no. viaje/vuelo, no. manifiesto, cargo control, fecha de llegada real, notas. These also fill the DUA elements that used to be exported empty (`TransportCompanyCode`, `TransportNationality`, `TransportMethod`, `ManifestNo`, `CargoControlNo`, `EntryDate`, `VoyageNo`).
 - [x] **Tab VUCE** — flags the partidas whose HS chapter needs a permit and names the issuing body (`src/utils/vuce.ts`). This is a local rule table, not a SIRE integration: there is no public VUCE API, so a digitador still confirms in VUCE itself. Replace `REGLAS_VUCE` when an integration exists.
-- [x] **Validación productos no temporal** — a renglón may only be marked temporary under régimen 2, 3 or 5; otherwise the VUCE tab shows an error listing the offending lines.
+- [x] **Validación productos no temporal** — driven by the DGA's own list of the 1,719 subpartidas that do not admit temporary products (`src/data/subpartidasNoTemporales.ts`, generated from *subpartidas-que-no-admiten-productos-temporales*, version 12, 15/08/2022). On those codes SIGA demands the número de artículo de producto, so the VUCE tab flags a line that is marked temporary **or** has no `codigoProducto`. The régimen plays no part; the earlier régimen 2/3/5 rule was a guess and has been removed.
 - [x] **Generación hoja de registro** — printable sheet built by `buildHojaRegistroHtml` and shown in an iframe with Imprimir / Descargar. It is our own layout: replace it when the brokerage's real template is available.
-- [ ] **Preliquidación** — still needs the duty/tax formula (arancel, ITBIS, selectivo) and the rate source.
+- [x] **Preliquidación** — the duty/tax chain is implemented in `src/utils/preliquidacion.ts` and pinned by the four worked examples of the DGA course material (see §6, *Preliquidación*). Rates are an input, not a lookup: the module is pure and the caller supplies them per line, because the arancel table is not yet in the repo. **Not yet wired to a screen** — there is no Preliquidación tab.
 
 ### Usuarios — done
 - **ADMIN** — everything, including client reporting and Settings.
@@ -248,9 +248,48 @@ The six values SIGA offers, in the order its dropdown shows them (screenshot fro
 
 SIGA shows labels only, so the XML carries the label. Earlier guesses (MANIFIESTO, ANTICIPADO, URGENTE, EXPRESO) are not SIGA values; `TIPO_DESPACHO_LEGACY` maps them (MANIFIESTO/URGENTE/EXPRESO → GENERAL, ANTICIPADO → NO MANIFIESTO) and `migrateExpediente` rewrites persisted records at store version 4.
 
+### Preliquidación (impuestos de importación)
+
+Each step feeds the next, so the order is not negotiable:
+
+```
+CIF USD  = FOB + seguro + flete + otros
+CIF RD$  = CIF USD × tasa de cambio
+Gravamen = CIF RD$ × % arancel                    (Ley 146-00)
+ISC      = (CIF RD$ + Gravamen) × % ISC           (Ley 11-92, título IV)
+ITBIS    = (CIF RD$ + Gravamen + ISC) × 18%       (Ley 11-92, título III)
+```
+
+Alcohol and tobacco are the exception. Their ISC is charged on the **retail** price, plus a
+specific amount, and only the sum feeds ITBIS:
+
+```
+ISC ad-valorem = precio de venta al por menor × cantidad × %   (alcohol 10%, tabaco 20%)
+ISC específico = monto × grado alcohólico × litros             (alcohol)
+               = monto × cajetillas                            (tabaco)
+```
+
+The specific amounts are indexed by DGII and therefore belong in Settings, not in a constant:
+the 2026 course used RD$764.29 per litre-degree of alcohol and RD$32.33 per cajetilla.
+
+Seguro, flete and otros are declared for the whole shipment but taxed per line, so
+`preliquidar` prorates them by each line's share of FOB.
+
+**Tasas por servicio aduanero** (Norma General 01-2023, in `src/data/tasasServicio.ts`) are
+charged on top of the taxes and supersede the Ley 226-06 figures still printed in training
+material: RD$258.26 per import DUA, US$110.31 per 20' container, US$147.07 per 40'/45'
+container and per vehicle, US$0.37/kg consolidated, US$0.74/TM bulk. Vehicles also pay primera
+placa (17% of CIF RD$) and a CO2 levy of 0–3%, neither of which is implemented.
+
+The arancel's ITBIS column marks **exemptions only**: an explicit `0` means exempt, a blank
+means the standard 18%. Confirmed against `0106.14.00` (conejos, 8% gravamen / 0% ITBIS).
+
+Still missing: the preferential rates per acuerdo, and current specific ISC amounts from DGII
+rather than the course's 2026 figures.
+
 ### SIGA XML
 
-The DGA publishes the XSDs SIGA accepts on upload ("Archivos XSD necesarios para trabajar en SIGA", aduanas.gob.do/de-interes/descargas). Copies are in `docs/siga-xsd/`. `buildSigaImportXml` / `buildSigaExportXml` follow `ImportDUA.xsd` / `ExportDUA.xsd` element by element. Fields the app does not track but the schema requires (TransportCompanyCode, TransportNationality, TransportMethod) are emitted empty so SIGA asks for them on upload. Codes for ContainerType, UnitCode, RequiredDocumentCode and ProductStatusCode are SIGA-internal and unknown; the app passes its own labels. Declaration numbers follow `<AreaCode>-IC01-<YYMM>-<seq>` for imports and liquidations `<AreaCode>-CL11-<YYMM>-<seq>`.
+The DGA publishes the XSDs SIGA accepts on upload ("Archivos XSD necesarios para trabajar en SIGA", aduanas.gob.do/de-interes/descargas). Copies are in `docs/siga-xsd/`. `buildSigaImportXml` / `buildSigaExportXml` follow `ImportDUA.xsd` / `ExportDUA.xsd` element by element. Fields the app does not track but the schema requires (`BrandCode`, `ModelCode`, `ContainerPlate`) are emitted empty so SIGA asks for them on upload. The DGA also publishes field specs as spreadsheets (*declaration-information* / *declaration-export-information*, 77 fields each, 39 and 41 required); where they disagree with the XSD the XSD wins, because that is what validates the upload — the spec sheets name the header field `ImDeclarationNo` and spell `CommercialInvoiceno`, while the schema elements are `FormNo` and `CommercialInvoiceNo`. The required-document blocks (`ImpDeclarationDocument` / `ExpDeclarationRequiredDocument`) are `minOccurs="0"` and are omitted entirely: the app tracks invoices, not permits, so there is nothing to put in them. `xml.test.ts` parses the XSDs at test time and asserts that every element the builders emit exists in the schema and follows its `xs:sequence` order. Codes for ContainerType, UnitCode, RequiredDocumentCode and ProductStatusCode are SIGA-internal and unknown; the app passes its own labels. Declaration numbers follow `<AreaCode>-IC01-<YYMM>-<seq>` for imports and liquidations `<AreaCode>-CL11-<YYMM>-<seq>`.
 
 **Country codes:** ISO 3166-1 numeric, zero-padded to 3 chars (724 España, 356 India, 156 China, 764 Tailandia, 276 Alemania, 756 Suiza, 214 República Dominicana). Names uppercase Spanish. The DGA port table uses the same numeric codes, which confirms the convention.
 
@@ -308,3 +347,7 @@ Suplidores were left on their own `codigo` + `tid`; only the importer side was s
 | 2026-09-03 | Session-scoped persistence: logout clears the persisted stores and resets them to seed, with a confirmation dialog | Freddie: "add a persistor to state, so I can refresh without losing data - cleared when logged out". Theme excluded as it is a display preference |
 | 2026-09-03 | Cliente form rebuilt to match SIGA's importer form; the key became the dynamic pair (tipoDocumento, documento) rather than the RNC alone; party codes in the SIGA XML are now composed per the XSD | Freddie supplied the SIGA screen: the document type dropdown (CED/PAS/RNC/TID) makes the identifier dynamic |
 | 2026-09-02 | Excel import matches normalised header aliases rather than exact names | Client spreadsheets vary in capitalisation and accents |
+| 2026-09-08 | Preliquidación built as a pure module with rates as an input, not a built-in tariff lookup | The arancel table is 7,675 subpartidas extracted from a 633-page PDF and is not yet in the repo; keeping rates out lets the formula be unit-tested against the four course examples today and fed a real table later |
+| 2026-09-08 | ISC for alcohol and tobacco charged on the retail price plus a specific amount, not on CIF | Ley 11-92 párrafos V y VIII; the DGA course examples only reconcile this way (whisky 2208.30.20 and cigarrillos 2402.20.30 both match to the cent) |
+| 2026-09-08 | "Productos no temporales" rekeyed from régimen to the DGA's subpartida list | Freddie supplied the official list; the régimen 2/3/5 rule was invented and wrong. The list also encodes which codes need the número de artículo de producto |
+| 2026-09-08 | The XSD outranks the DGA field-spec spreadsheets where they disagree | The XSD is what SIGA validates the upload against; the spreadsheets carry SIGA's internal field labels (ImDeclarationNo, CommercialInvoiceno) that do not exist as elements |

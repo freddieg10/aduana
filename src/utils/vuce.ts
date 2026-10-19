@@ -1,4 +1,5 @@
 import type { Expediente, Partida } from '../types';
+import { exigeArticuloRegistrado } from '../data/subpartidasNoTemporales';
 
 /**
  * Local stand-in for the SIRE/VUCE check.
@@ -59,16 +60,34 @@ export function validarVuce(partidas: Partida[]): HallazgoVuce[] {
   return out;
 }
 
-/** Régimen codes under which goods may legitimately be temporary. */
-export const REGIMENES_TEMPORALES = ['2', '3', '5'];
+/** Why a line failed the "productos no temporales" check. */
+export type MotivoNoTemporal =
+  /** The line is flagged temporary but its subpartida does not admit temporary products. */
+  | 'temporal'
+  /** The subpartida requires a registered article and the line has no ProductCode. */
+  | 'sinArticulo';
+
+export interface HallazgoNoTemporal {
+  partida: Partida;
+  motivo: MotivoNoTemporal;
+}
 
 /**
- * "Validación productos no temporal": a line may only be marked temporary when the
- * expediente's régimen is a temporary one. Returns the offending lines.
+ * "Validación productos no temporal".
+ *
+ * The DGA publishes the subpartidas that may not be declared with a temporary product record
+ * (`src/data/subpartidasNoTemporales.ts`); on those, SIGA demands the número de artículo de
+ * producto — the registered `ProductCode`. Everything outside the list may still be declared
+ * temporarily, whatever the régimen, so the régimen plays no part in this rule.
  */
 export function validarNoTemporal(
-  e: Pick<Expediente, 'partidas' | 'regimenAduanero'>,
-): Partida[] {
-  if (REGIMENES_TEMPORALES.includes(e.regimenAduanero.codigo)) return [];
-  return e.partidas.filter((p) => p.temporal);
+  e: Pick<Expediente, 'partidas'>,
+): HallazgoNoTemporal[] {
+  const out: HallazgoNoTemporal[] = [];
+  for (const p of e.partidas) {
+    if (!exigeArticuloRegistrado(p.codigoPartida)) continue;
+    if (p.temporal) out.push({ partida: p, motivo: 'temporal' });
+    else if (!p.codigoProducto.trim()) out.push({ partida: p, motivo: 'sinArticulo' });
+  }
+  return out;
 }

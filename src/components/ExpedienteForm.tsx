@@ -107,7 +107,7 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
   const ia = value.informacionAdicional;
   const setIa = (p: Partial<ExpedienteFormData['informacionAdicional']>) => patch({ informacionAdicional: { ...ia, ...p } });
   const hallazgosVuce = validarVuce(value.partidas);
-  const noTemporal = validarNoTemporal({ partidas: value.partidas, regimenAduanero: value.regimenAduanero });
+  const noTemporal = validarNoTemporal({ partidas: value.partidas });
 
   const selectedCountry = findCountryByCode(d.paisProcedenciaCodigo) ?? null;
   /* Keep a depósito stored before the catalog existed selectable. */
@@ -584,9 +584,14 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
 
           {noTemporal.length > 0 && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {t('detail.noTemporalError', { regimen: value.regimenAduanero.nombre })}
+              {t('detail.noTemporalError')}
               <ul style={{ margin: '4px 0 0 16px' }}>
-                {noTemporal.map((p) => <li key={p.id}>{p.codigoPartida} — {p.descripcion}</li>)}
+                {noTemporal.map((h) => (
+                  <li key={h.partida.id}>
+                    {h.partida.codigoPartida} — {h.partida.descripcion}
+                    {' · '}{t(h.motivo === 'temporal' ? 'detail.noTemporalMotivoTemporal' : 'detail.noTemporalMotivoSinArticulo')}
+                  </li>
+                ))}
               </ul>
             </Alert>
           )}
