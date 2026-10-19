@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { emptyPartida, withDerived } from './partida';
 import {
-  preliquidar, calcularTasaServicio, resolverDesdeTablas, normalizarHs,
+  preliquidar, calcularTasaServicio, normalizarHs,
   SIN_IMPUESTOS, type TasasRenglon,
 } from './preliquidacion';
 import type { Partida, Valores } from '../types';
@@ -169,34 +169,24 @@ describe('tasa por servicio aduanero', () => {
   });
 });
 
-describe('resolverDesdeTablas', () => {
-  const tablas = {
-    arancel: new Map([['84151000', { gravamen: 20, itbis: 18 }], ['01061400', { gravamen: 8, itbis: 0 }]]),
-    isc: new Map([['84151000', 20]]),
-    especifico: new Map<string, { tipo: 'alcohol' | 'unidad'; monto: number }>([
-      ['22083020', { tipo: 'alcohol', monto: 764.29 }],
-    ]),
-  };
-  const resolver = resolverDesdeTablas(tablas);
+describe('renglones sin tasas', () => {
+  it('no suman impuestos y se reportan, para que el total no pase por completo', () => {
+    const conTasas = partida({ codigoPartida: '8415.10.00', cantidad: 1, valorFob: 1_000 });
+    const sinTasas = partida({ codigoPartida: '9999.99.99', cantidad: 1, valorFob: 1_000 });
+    const r = preliquidar({
+      partidas: [conTasas, sinTasas],
+      valores: valores({}),
+      resolverTasas: (p) => (p === conTasas ? tasas({ gravamen: 20 }) : undefined),
+    });
+    expect(r.lineas[1].sinTasas).toBe(true);
+    expect(r.lineas[1].total).toBe(0);
+    expect(r.lineas[0].sinTasas).toBe(false);
+    expect(r.totales.impuestos).toBe(r.lineas[0].total);
+    expect(r.advertencias).toContain('sinTasas:9999.99.99');
+  });
 
   it('normaliza el código con o sin puntos', () => {
     expect(normalizarHs('8415.10.00')).toBe('84151000');
-    expect(resolver(partida({ codigoPartida: '8415.10.00' })).gravamen).toBe(20);
-    expect(resolver(partida({ codigoPartida: '84151000' })).gravamen).toBe(20);
-  });
-
-  it('respeta la exención de ITBIS del arancel', () => {
-    expect(resolver(partida({ codigoPartida: '0106.14.00' })).itbis).toBe(0);
-  });
-
-  it('trae el monto específico cuando existe', () => {
-    const t = resolver(partida({ codigoPartida: '2208.30.20' }));
-    expect(t.iscEspecificoTipo).toBe('alcohol');
-    expect(t.iscEspecificoMonto).toBe(764.29);
-  });
-
-  it('un código desconocido no paga gravamen y queda en el ITBIS estándar', () => {
-    const t = resolver(partida({ codigoPartida: '9999.99.99' }));
-    expect(t).toEqual({ gravamen: 0, itbis: 18, isc: 0, iscEspecificoTipo: 'ninguno', iscEspecificoMonto: 0 });
+    expect(normalizarHs('84151000')).toBe('84151000');
   });
 });

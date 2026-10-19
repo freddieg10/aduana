@@ -1,4 +1,4 @@
-import type { Contenedor, Partida, Valores } from '../types';
+import type { Contenedor, Partida, TasasRenglon, Valores } from '../types';
 import { TASA_DUA_IMPORTACION, tasaPorContenedor } from '../data/tasasServicio';
 
 /**
@@ -20,25 +20,17 @@ import { TASA_DUA_IMPORTACION, tasaPorContenedor } from '../data/tasasServicio';
  * testable and the tariff table can be loaded however the app likes.
  */
 
-/** Tax rates for one tariff line. Percentages are whole numbers: 18 means 18%. */
-export interface TasasRenglon {
-  gravamen: number;
-  itbis: number;
-  /** ISC ad-valorem rate. 0 when the good is not subject to ISC. */
-  isc: number;
-  /**
-   * 'ninguno'  — ISC ad-valorem applies to (CIF RD$ + gravamen), the ordinary case.
-   * 'alcohol'  — ad-valorem on the retail price, plus monto × grado alcohólico × litros.
-   * 'unidad'   — ad-valorem on the retail price, plus monto × cantidad (e.g. per cajetilla).
-   */
-  iscEspecificoTipo: 'ninguno' | 'alcohol' | 'unidad';
-  /** RD$ per litre-degree (alcohol) or per unit (tobacco). Ignored when tipo is 'ninguno'. */
-  iscEspecificoMonto: number;
-}
+export type { TasasRenglon };
 
 export const SIN_IMPUESTOS: TasasRenglon = {
   gravamen: 0, itbis: 18, isc: 0, iscEspecificoTipo: 'ninguno', iscEspecificoMonto: 0,
 };
+
+/** What a line with no known rates is computed with: nothing, so it cannot pass for a real figure. */
+const SIN_TASAS: TasasRenglon = { ...SIN_IMPUESTOS, itbis: 0 };
+
+/** HS codes appear as "4818.30.00" or "48183000" depending on the source. */
+export const normalizarHs = (codigo: string) => (codigo ?? '').replace(/\D/g, '');
 
 export interface LineaPreliquidacion {
   partidaId: string;
@@ -61,6 +53,8 @@ export interface LineaPreliquidacion {
   /** gravamen + isc + itbis */
   total: number;
   tasas: TasasRenglon;
+  /** The resolver had no rates for this line, so it adds nothing to the totals. */
+  sinTasas: boolean;
 }
 
 export interface TotalesPreliquidacion {
@@ -87,7 +81,10 @@ export interface EntradaPreliquidacion {
   partidas: Partida[];
   valores: Valores;
   contenedores?: Contenedor[];
-  /** Rates per line. Anything the resolver does not know falls back to `SIN_IMPUESTOS`. */
+  /**
+   * Rates per line. A line the resolver has no rates for is computed with no taxes at all,
+   * flagged `sinTasas` and reported, so the totals are visibly incomplete rather than wrong.
+   */
   resolverTasas: (p: Partida) => TasasRenglon | undefined;
 }
 
@@ -115,7 +112,9 @@ export function preliquidar({ partidas, valores, contenedores = [], resolverTasa
   const otros = prorratear(partidas, valores.otros);
 
   const lineas: LineaPreliquidacion[] = partidas.map((p, i) => {
-    const tasas = resolverTasas(p) ?? SIN_IMPUESTOS;
+    const resueltas = resolverTasas(p);
+    const tasas = resueltas ?? SIN_TASAS;
+    if (!resueltas) advertencias.push(`sinTasas:${p.codigoPartida}`);
 
     const fobUsd = p.valorFob;
     const cifUsd = fobUsd + seguro[i] + flete[i] + otros[i];
@@ -157,6 +156,7 @@ export function preliquidar({ partidas, valores, contenedores = [], resolverTasa
       itbis: redondear(itbis),
       total: redondear(gravamen + isc + itbis),
       tasas,
+      sinTasas: !resueltas,
     };
   });
 
@@ -187,38 +187,4 @@ export function calcularTasaServicio(contenedores: Contenedor[], tasaCambio: num
     total += tasa.moneda === 'USD' ? tasa.monto * tasaCambio : tasa.monto;
   }
   return total;
-}
-
-/**
- * Rates for one line, taken from the tariff table and the ISC annex. Both tables are keyed by
- * HS code; `especifico` carries the alcohol/tobacco amounts, which DGII adjusts periodically
- * and therefore live in Settings rather than in a constant here.
- */
-export interface TablasTasas {
-  arancel: Map<string, { gravamen: number; itbis: number }>;
-  isc: Map<string, number>;
-  especifico?: Map<string, { tipo: 'alcohol' | 'unidad'; monto: number }>;
-}
-
-/** HS codes appear as "4818.30.00" or "48183000" depending on the source. */
-export const normalizarHs = (codigo: string) => (codigo ?? '').replace(/\D/g, '');
-
-export function resolverDesdeTablas(tablas: TablasTasas): (p: Partida) => TasasRenglon {
-  const porHs = <T,>(m: Map<string, T>, codigo: string): T | undefined => {
-    const n = normalizarHs(codigo);
-    return m.get(codigo) ?? m.get(n) ?? undefined;
-  };
-
-  return (p) => {
-    const ar = porHs(tablas.arancel, p.codigoPartida);
-    const isc = porHs(tablas.isc, p.codigoPartida) ?? 0;
-    const esp = tablas.especifico ? porHs(tablas.especifico, p.codigoPartida) : undefined;
-    return {
-      gravamen: ar?.gravamen ?? 0,
-      itbis: ar?.itbis ?? 18,
-      isc,
-      iscEspecificoTipo: esp?.tipo ?? 'ninguno',
-      iscEspecificoMonto: esp?.monto ?? 0,
-    };
-  };
 }

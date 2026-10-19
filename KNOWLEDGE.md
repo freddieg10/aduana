@@ -131,7 +131,7 @@ Source: product notes from Freddie, 2026-09-03 (SIGA screens + backlog). Done it
 - [x] **Tab VUCE** — flags the partidas whose HS chapter needs a permit and names the issuing body (`src/utils/vuce.ts`). This is a local rule table, not a SIRE integration: there is no public VUCE API, so a digitador still confirms in VUCE itself. Replace `REGLAS_VUCE` when an integration exists.
 - [x] **Validación productos no temporal** — driven by the DGA's own list of the 1,719 subpartidas that do not admit temporary products (`src/data/subpartidasNoTemporales.ts`, generated from *subpartidas-que-no-admiten-productos-temporales*, version 12, 15/08/2022). On those codes SIGA demands the número de artículo de producto, so the VUCE tab flags a line that is marked temporary **or** has no `codigoProducto`. The régimen plays no part; the earlier régimen 2/3/5 rule was a guess and has been removed.
 - [x] **Generación hoja de registro** — printable sheet built by `buildHojaRegistroHtml` and shown in an iframe with Imprimir / Descargar. It is our own layout: replace it when the brokerage's real template is available.
-- [x] **Preliquidación** — the duty/tax chain is implemented in `src/utils/preliquidacion.ts` and pinned by the four worked examples of the DGA course material (see §6, *Preliquidación*). Rates are an input, not a lookup: the module is pure and the caller supplies them per line, because the arancel table is not yet in the repo. **Not yet wired to a screen** — there is no Preliquidación tab.
+- [x] **Preliquidación** — tab on the expediente with a **Preliquidar** button. It loads the arancel, freezes gravamen / ISC / ITBIS per renglón on the expediente, lets the digitador correct any rate by hand, and shows the amounts and the total to pay (see §6, *Preliquidación*). The four worked examples of the DGA course reproduce to the cent, both in the tests and on screen. Exports show a note instead: they pay none of these taxes.
 
 ### Usuarios — done
 - **ADMIN** — everything, including client reporting and Settings.
@@ -269,8 +269,11 @@ ISC específico = monto × grado alcohólico × litros             (alcohol)
                = monto × cajetillas                            (tabaco)
 ```
 
-The specific amounts are indexed by DGII and therefore belong in Settings, not in a constant:
-the 2026 course used RD$764.29 per litre-degree of alcohol and RD$32.33 per cajetilla.
+The specific amounts are indexed by DGII every quarter and live in Settings (`iscMontos`), not
+in a constant. Defaults come from the 2026 course: RD$764.29 per litre of absolute alcohol (the
+course multiplies it by grado × litros) and RD$32.33 per pack of 10 cigarettes. The law tabulates
+the pack of 20 at twice the pack of 10 (50.0 vs 25.0 in its base table), so the default for 20
+is RD$64.66 — derived, not sourced.
 
 Seguro, flete and otros are declared for the whole shipment but taxed per line, so
 `preliquidar` prorates them by each line's share of FOB.
@@ -284,8 +287,38 @@ placa (17% of CIF RD$) and a CO2 levy of 0–3%, neither of which is implemented
 The arancel's ITBIS column marks **exemptions only**: an explicit `0` means exempt, a blank
 means the standard 18%. Confirmed against `0106.14.00` (conejos, 8% gravamen / 0% ITBIS).
 
-Still missing: the preferential rates per acuerdo, and current specific ISC amounts from DGII
-rather than the course's 2026 figures.
+**Where the rates come from.**
+
+- *Gravamen and ITBIS*: `src/data/arancel.json`, extracted from *Arancel Aduanas 7ma Enmienda.pdf*
+  by `scripts/extraer-arancel.mjs`. The PDF has no table structure, and the naive reading
+  (rates in reading order) misassigns lines on amended pages, where the rate column drifts up
+  to ~6pt off the code column. The script aligns rates to lines per page with a monotone
+  one-to-one alignment instead, and its header lists every trap it handles (doubled glyph
+  runs, split codes like `0702` `.` `00.12`, codes with a space, 7pt superscripts, `500 micras`
+  in the rate column). Result: 7,697 subpartidas, every one with a gravamen in the DR bands
+  0/3/8/14/20/25/40, 721 ITBIS-exempt. `tasas.test.ts` checks those counts against the file.
+- *ISC* (`src/data/isc.ts`, Ley 11-92 art. 375 as amended by Ley 253-12):
+  - the art. 375 table — 76 entries, 15 of them whole partidas — charged on (CIF RD$ + gravamen);
+    a subpartida entry wins over its partida (85.29 is 20% but 8529.10.10/20 antennas are 10%);
+  - alcohol, partidas 22.03–22.08: 10% of the retail price + the per-litre amount;
+  - cigarettes, 2402.20.10/20 and 2402.90.00 (pack of 20) and 2402.20.30/40 (pack of 10): 20% of
+    the retail price + the per-pack amount. Cigars (2402.10) pay the 20% but have no tabulated
+    amount and get a "verify" note.
+  - Nine annex codes no longer exist in the 7ma enmienda. Four are mapped to their successors by
+    description (jacuzzis 7418.20.11 and 7615.20.11, 8516.79.xx, yates 8903.3x.11), 8415.90.00 is
+    covered by partida 84.15, and four have no clear successor — pocket cassette players, digital
+    cameras, video cameras, cell antennas. Their ISC is **not** applied; lines in the subheadings
+    they moved to get a "verify" note.
+
+**Not modelled** (the tab warns where it can): preferential rates per acuerdo; regimes other than
+despacho a consumo, which may suspend or exempt taxes; the per-kilo / per-tonne service fee for
+loose cargo; vehicles' primera placa and CO2 levy; the ISC on fuels (Ley 112-00, not in the
+annex); and 24.03 tobacco, which the art. 375 table puts at 130% ad valorem while párrafo VIII
+also names "productos del tabaco" for the 20% retail rate — the table is applied.
+
+**Seed data caveat**: apart from 4818.30.00, the seed expedientes use invented HS codes
+(`8542.31.01`, `2005.99.01`…) that are not in the arancel, so those files preliquidate as
+"sin tasas". That is the screen working as intended, not a bug.
 
 ### SIGA XML
 
@@ -351,3 +384,8 @@ Suplidores were left on their own `codigo` + `tid`; only the importer side was s
 | 2026-09-08 | ISC for alcohol and tobacco charged on the retail price plus a specific amount, not on CIF | Ley 11-92 párrafos V y VIII; the DGA course examples only reconcile this way (whisky 2208.30.20 and cigarrillos 2402.20.30 both match to the cent) |
 | 2026-09-08 | "Productos no temporales" rekeyed from régimen to the DGA's subpartida list | Freddie supplied the official list; the régimen 2/3/5 rule was invented and wrong. The list also encodes which codes need the número de artículo de producto |
 | 2026-09-08 | The XSD outranks the DGA field-spec spreadsheets where they disagree | The XSD is what SIGA validates the upload against; the spreadsheets carry SIGA's internal field labels (ImDeclarationNo, CommercialInvoiceno) that do not exist as elements |
+| 2026-10-19 | Preliquidación wired to a tab on the expediente; the arancel ships as `src/data/arancel.json`, loaded as its own chunk the first time the tab opens | Freddie: "where is the button to preliquidar an expediente?". 460 KB (104 KB gzipped) is too much for the main bundle but fine on demand |
+| 2026-10-19 | Rates are frozen on the expediente per renglón, with the HS code they were taken for; amounts are always recomputed | A rate edited by hand must survive a reload, and a figure given to a client must not move when the arancel or the Settings amounts change. Storing amounts would go stale the moment a value is corrected |
+| 2026-10-19 | A renglón with no rates adds nothing and marks the total incomplete, instead of defaulting to 0% gravamen and 18% ITBIS | The default looked like a real figure; an unknown is now visibly unknown |
+| 2026-10-19 | The arancel rates are matched to lines by geometry (monotone alignment per page), not reading order | Reading order misassigned rates on amended pages where the rate column is offset; the alignment also recovered six subpartidas the first pass dropped |
+| 2026-10-19 | Expediente detail page keyed by id | Found while testing: going detail-to-detail (bell, dashboard, reports) kept the previous expediente's form, and Save would have written it over the new one |

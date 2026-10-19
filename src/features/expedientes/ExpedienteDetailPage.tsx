@@ -16,9 +16,18 @@ import ExpedienteForm from '../../components/ExpedienteForm';
 import ObservationsTimeline from '../../components/ObservationsTimeline';
 import HojaRegistroDialog from '../../components/HojaRegistroDialog';
 
+/*
+ * Keyed by id: links from the notification bell, the dashboard or the reports go from one
+ * detail page straight to another without leaving the route, and the form state would
+ * otherwise keep the previous expediente — which Save would then write over the new one.
+ */
 export default function ExpedienteDetailPage() {
-  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
+  return <ExpedienteDetalle key={id} id={id} />;
+}
+
+function ExpedienteDetalle({ id }: { id: string | undefined }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const expediente = useExpedientesStore((s) => s.expedientes.find((e) => e.id === id));
   const currentUser = useAuthStore((s) => s.user);

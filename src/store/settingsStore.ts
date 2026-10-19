@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DIGITADORES, GESTORES, TASA_CAMBIO_DEFAULT } from '../data/catalogos';
+import { ISC_MONTOS_DEFAULT } from '../data/isc';
+import type { MontosIsc } from '../utils/tasas';
 
 export interface TarifaServicio {
   id: string;
@@ -21,11 +23,17 @@ export interface SettingsState {
    */
   diasArt52: number;
   tarifario: TarifaServicio[];
+  /**
+   * ISC specific amounts for alcohol and cigarettes. DGII re-indexes them every quarter, so
+   * the admin keeps them current; a preliquidación freezes the values it was run with.
+   */
+  iscMontos: MontosIsc;
   digitadores: string[];
   gestores: string[];
 
   setTasaUsd: (tasa: number) => void;
   setDiasArt52: (dias: number) => void;
+  setIscMontos: (m: Partial<MontosIsc>) => void;
   addTarifa: (t: Omit<TarifaServicio, 'id'>) => void;
   updateTarifa: (id: string, t: Partial<TarifaServicio>) => void;
   removeTarifa: (id: string) => void;
@@ -42,11 +50,12 @@ const SEED_TARIFARIO: TarifaServicio[] = [
   { id: 'tf-5', servicio: 'Despacho urgente', precio: 100, moneda: 'USD', notas: 'Fuera de horario' },
 ];
 
-const SEED: Pick<SettingsState, 'tasaUsd' | 'tasaUsdActualizada' | 'diasArt52' | 'tarifario' | 'digitadores' | 'gestores'> = {
+const SEED: Pick<SettingsState, 'tasaUsd' | 'tasaUsdActualizada' | 'diasArt52' | 'tarifario' | 'iscMontos' | 'digitadores' | 'gestores'> = {
   tasaUsd: TASA_CAMBIO_DEFAULT,
   tasaUsdActualizada: '',
   diasArt52: 30,
   tarifario: SEED_TARIFARIO,
+  iscMontos: { ...ISC_MONTOS_DEFAULT },
   digitadores: DIGITADORES,
   gestores: GESTORES,
 };
@@ -58,6 +67,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       setTasaUsd: (tasa) => set({ tasaUsd: tasa, tasaUsdActualizada: new Date().toISOString() }),
       setDiasArt52: (dias) => set({ diasArt52: dias }),
+      setIscMontos: (m) => set((s) => ({ iscMontos: { ...s.iscMontos, ...m } })),
 
       addTarifa: (t) => set((s) => ({ tarifario: [...s.tarifario, { ...t, id: crypto.randomUUID() }] })),
       updateTarifa: (id, t) => set((s) => ({ tarifario: s.tarifario.map((x) => (x.id === id ? { ...x, ...t } : x)) })),
@@ -73,8 +83,13 @@ export const useSettingsStore = create<SettingsState>()(
       version: 1,
       partialize: (s) => ({
         tasaUsd: s.tasaUsd, tasaUsdActualizada: s.tasaUsdActualizada, diasArt52: s.diasArt52,
-        tarifario: s.tarifario, digitadores: s.digitadores, gestores: s.gestores,
+        tarifario: s.tarifario, iscMontos: s.iscMontos, digitadores: s.digitadores, gestores: s.gestores,
       }),
+      // A settings blob saved before a field existed keeps that field's default.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<SettingsState>;
+        return { ...current, ...p, iscMontos: { ...current.iscMontos, ...(p.iscMontos ?? {}) } };
+      },
     },
   ),
 );

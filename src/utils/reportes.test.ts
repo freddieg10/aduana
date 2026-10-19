@@ -32,6 +32,7 @@ const exp = (over: Partial<Expediente> = {}): Expediente => ({
   pesoMercancia: { codigoMercancia: '', pesoBrutoKg: 0, pesoNetoKg: 0 },
   partidas: [partida({ id: 'p1', codigoPartida: '4818.30.00', codigoProducto: 'SP4020', descripcion: 'Servilletas', cantidad: 10, valorFob: 100 })],
   informacionAdicional: emptyInformacionAdicional(),
+  preliquidacion: null,
   digitador: 'Ana', gestor: 'Pedro',
   observaciones: [], assignedUserId: '2',
   createdAt: '2026-01-05T10:00:00Z', updatedAt: '2026-01-05T10:00:00Z',

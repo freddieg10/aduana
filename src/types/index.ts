@@ -126,6 +126,45 @@ export interface PesoMercancia {
   pesoNetoKg: number;
 }
 
+// --- Preliquidación ---
+
+/** Tax rates for one tariff line. Percentages are whole numbers: 18 means 18%. */
+export interface TasasRenglon {
+  gravamen: number;
+  itbis: number;
+  /** ISC ad-valorem rate. 0 when the good is not subject to ISC. */
+  isc: number;
+  /**
+   * 'ninguno'  — ISC ad-valorem applies to (CIF RD$ + gravamen), the ordinary case.
+   * 'alcohol'  — ad-valorem on the retail price, plus monto × grado alcohólico × litros.
+   * 'unidad'   — ad-valorem on the retail price, plus monto × cantidad (e.g. per cajetilla).
+   */
+  iscEspecificoTipo: 'ninguno' | 'alcohol' | 'unidad';
+  /** RD$ per litre of absolute alcohol, or per unit (pack). Ignored when tipo is 'ninguno'. */
+  iscEspecificoMonto: number;
+}
+
+/** The rates one renglón was preliquidated with. */
+export interface TasasPartida {
+  /** HS code the rates were looked up for. Once the line's code changes they no longer apply. */
+  codigoPartida: string;
+  tasas: TasasRenglon;
+  /** A digitador overrode a rate by hand. "Restablecer" still replaces it. */
+  manual: boolean;
+}
+
+/**
+ * Rates are frozen on the expediente when it is preliquidated, so a later change to the
+ * arancel or to the ISC amounts in Settings does not silently move a figure already given
+ * to the client. Amounts are not stored: they are recomputed from the current values.
+ */
+export interface PreliquidacionExpediente {
+  /** ISO timestamp of the last "Preliquidar". */
+  fecha: string;
+  /** Keyed by partida id. */
+  tasas: Record<string, TasasPartida>;
+}
+
 // --- Partidas (Line items / tariff lines) — "Renglones" in the UI ---
 
 /** Vehicle detail, only filled for vehicle tariff lines. Maps to the Vehicle* DUA fields. */
@@ -243,6 +282,9 @@ export interface Expediente {
   partidas: Partida[];
 
   informacionAdicional: InformacionAdicional;
+
+  /** Null until the expediente is preliquidated. */
+  preliquidacion: PreliquidacionExpediente | null;
 
   // Staff assignment
   digitador: string;

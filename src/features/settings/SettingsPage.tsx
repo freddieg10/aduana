@@ -44,8 +44,8 @@ function ListaNombres({ titulo, nombres, onChange }: { titulo: string; nombres: 
 export default function SettingsPage() {
   const { t } = useTranslation();
   const {
-    tasaUsd, tasaUsdActualizada, diasArt52, tarifario, digitadores, gestores,
-    setTasaUsd, setDiasArt52, addTarifa, updateTarifa, removeTarifa, setDigitadores, setGestores,
+    tasaUsd, tasaUsdActualizada, diasArt52, tarifario, iscMontos, digitadores, gestores,
+    setTasaUsd, setDiasArt52, setIscMontos, addTarifa, updateTarifa, removeTarifa, setDigitadores, setGestores,
   } = useSettingsStore();
 
   const [tasaDraft, setTasaDraft] = useState(String(tasaUsd));
@@ -95,6 +95,24 @@ export default function SettingsPage() {
             </Grid>
           </Grid>
           <Alert severity="info" sx={{ mt: 2 }}>{t('settings.tasaAutoNota')}</Alert>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>{t('settings.isc')}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{t('settings.iscHint')}</Typography>
+          <Grid container spacing={2}>
+            {(['alcoholPorLitro', 'cajetilla20', 'cajetilla10'] as const).map((k) => (
+              <Grid size={{ xs: 12, sm: 4 }} key={k}>
+                <TextField
+                  fullWidth type="number" label={t(`settings.isc_${k}`)}
+                  value={iscMontos[k]} onChange={(e) => setIscMontos({ [k]: Number(e.target.value) })}
+                  slotProps={{ input: { startAdornment: <InputAdornment position="start">RD$</InputAdornment> }, htmlInput: { step: 0.01, min: 0 } }}
+                />
+              </Grid>
+            ))}
+          </Grid>
         </CardContent>
       </Card>
 

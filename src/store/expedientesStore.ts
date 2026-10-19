@@ -62,6 +62,7 @@ const SEED_DATA: Expediente[] = [
       sp({ id: 'p7', codigoPartida: '4818.30.00', descripcion: 'SERVILLETA SUAO 40X40 PUNTA NEGRA (SP4029)', organico: false, cantidad: 112.0, unidad: 'KILOGRAMOS', paisOrigen: 'ESPAÑA', valorFob: 434.52, unitario: 3.8796, facturaDva: '4600527' }),
     ],
     informacionAdicional: infoAd({ transportistaNombre: 'MAERSK LINE', transporteNacionalidad: '208', medioTransporte: 'MARITIMO', noViaje: 'V-2202', manifiestoNo: 'MAN-2026-1180', fechaLlegadaReal: '2026-02-25' }),
+    preliquidacion: null,
     digitador: DIGITADORES[0], gestor: GESTORES[0],
     observaciones: [obs('2026-04-05T14:30:00Z', 'Digitador López', 'Falta BL — pendiente de documentación de embarque', true)],
     assignedUserId: '2',
@@ -91,6 +92,7 @@ const SEED_DATA: Expediente[] = [
       sp({ id: 'p10', codigoPartida: '5208.11.01', descripcion: 'Telas de algodón crudo sin blanquear', organico: false, cantidad: 500, unidad: 'KILOGRAMOS', paisOrigen: 'INDIA', valorFob: 6000.00, unitario: 12.00, facturaDva: '5002' }),
     ],
     informacionAdicional: infoAd({ transportistaNombre: 'HAPAG-LLOYD', transporteNacionalidad: '276', medioTransporte: 'MARITIMO', noViaje: 'V-4455', manifiestoNo: 'MAN-2026-2210' }),
+    preliquidacion: null,
     digitador: DIGITADORES[1], gestor: GESTORES[1],
     observaciones: [], assignedUserId: '2', createdAt: '2026-04-01T09:00:00Z', updatedAt: '2026-04-01T09:00:00Z',
   },
@@ -119,6 +121,7 @@ const SEED_DATA: Expediente[] = [
       sp({ id: 'p21', codigoPartida: '8534.00.01', descripcion: 'Placas PCB para ensamblaje', organico: false, cantidad: 200, unidad: 'UNIDADES', paisOrigen: 'CHINA', valorFob: 5000.00, unitario: 25.00, facturaDva: '4980' }),
     ],
     informacionAdicional: infoAd({ transportistaNombre: 'COSCO SHIPPING', transporteNacionalidad: '156', medioTransporte: 'MARITIMO', noViaje: 'V-9911', manifiestoNo: 'MAN-2026-1902', fechaLlegadaReal: '2026-03-15' }),
+    preliquidacion: null,
     digitador: DIGITADORES[2], gestor: GESTORES[2],
     observaciones: [obs('2026-03-20T16:00:00Z', 'Digitador López', 'Despacho completado sin incidencias', true)],
     assignedUserId: '2', createdAt: '2026-02-15T10:00:00Z', updatedAt: '2026-03-20T16:00:00Z',
@@ -147,6 +150,7 @@ const SEED_DATA: Expediente[] = [
       sp({ id: 'p30', codigoPartida: '2005.99.01', descripcion: 'Productos alimenticios enlatados — vegetales', organico: false, cantidad: 2000, unidad: 'KILOGRAMOS', paisOrigen: 'TAILANDIA', valorFob: 6000.00, unitario: 3.00, facturaDva: '5010' }),
     ],
     informacionAdicional: infoAd({ transportistaNombre: 'EVERGREEN', transporteNacionalidad: '158', medioTransporte: 'MARITIMO', noViaje: 'V-3344', manifiestoNo: 'MAN-2026-2440', fechaLlegadaReal: '2026-04-08' }),
+    preliquidacion: null,
     digitador: DIGITADORES[3], gestor: GESTORES[3],
     observaciones: [obs('2026-04-08T08:00:00Z', 'Admin García', 'ALERTA: Falta permiso sanitario')],
     assignedUserId: '2', createdAt: '2026-03-28T11:00:00Z', updatedAt: '2026-04-08T08:00:00Z',
@@ -176,6 +180,7 @@ const SEED_DATA: Expediente[] = [
       sp({ id: 'p41', codigoPartida: '8421.23.01', descripcion: 'Autopartes — Filtros de aceite', organico: false, cantidad: 500, unidad: 'UNIDADES', paisOrigen: 'ALEMANIA', valorFob: 4000.00, unitario: 8.00, facturaDva: '5015' }),
     ],
     informacionAdicional: infoAd({ transportistaNombre: 'MSC', transporteNacionalidad: '756', medioTransporte: 'MARITIMO', noViaje: 'V-8877', manifiestoNo: 'MAN-2026-2500', fechaLlegadaReal: '2026-04-18' }),
+    preliquidacion: null,
     digitador: DIGITADORES[0], gestor: GESTORES[1],
     observaciones: [obs('2026-04-09T12:00:00Z', 'Digitador López', 'Envío parcial — segundo embarque pendiente')],
     assignedUserId: '2', createdAt: '2026-04-02T07:00:00Z', updatedAt: '2026-04-09T12:00:00Z',
@@ -204,6 +209,7 @@ const SEED_DATA: Expediente[] = [
       sp({ id: 'p50', codigoPartida: '2941.10.01', descripcion: 'Materia prima farmacéutica — antibióticos', organico: false, cantidad: 50, unidad: 'KILOGRAMOS', paisOrigen: 'SUIZA', valorFob: 40000.00, unitario: 800.00, facturaDva: '5020' }),
     ],
     informacionAdicional: infoAd({ transportistaNombre: 'OOCL', transporteNacionalidad: '344', medioTransporte: 'MARITIMO', noViaje: 'V-5566', manifiestoNo: 'MAN-2026-2610' }),
+    preliquidacion: null,
     digitador: DIGITADORES[1], gestor: GESTORES[2],
     observaciones: [obs('2026-04-08T15:00:00Z', 'Digitador López', 'Requiere permiso sanitario y certificado de origen')],
     assignedUserId: '2', createdAt: '2026-04-08T15:00:00Z', updatedAt: '2026-04-08T15:00:00Z',
@@ -244,6 +250,7 @@ const ADMIN_BY_NAME = new Map(ADMINISTRACIONES.map((a) => [normName(a.nombre), a
  *           suplidores moved from an internal code to their TID.
  * v7:       observaciones gained `publica` (default private) and the expediente gained
  *           `informacionAdicional`.
+ * v8:       the expediente gained `preliquidacion` (null until preliquidated).
  */
 const IMPORTADOR_CODIGO_LEGACY: Record<string, string> = {
   '8115': '101-00001-1',
@@ -290,6 +297,7 @@ export function migrateExpediente(raw: Record<string, unknown>): Expediente {
   }
 
   upgraded.informacionAdicional = { ...emptyInformacionAdicional(), ...(upgraded.informacionAdicional ?? {}) };
+  upgraded.preliquidacion = upgraded.preliquidacion ?? null;
   upgraded.observaciones = upgraded.observaciones.map((o) => ({ ...o, publica: o.publica ?? false }));
 
   if (Array.isArray(upgraded.partidas)) {
@@ -414,7 +422,7 @@ export const useExpedientesStore = create<ExpedientesState>()(
     }),
     {
       name: 'aduana-expedientes',
-      version: 7,
+      version: 8,
       partialize: (s) => ({ expedientes: s.expedientes }),
       migrate: (persisted) => {
         const state = persisted as { expedientes?: Record<string, unknown>[] };

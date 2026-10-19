@@ -41,6 +41,7 @@ const sample: Expediente = {
     transportistaNombre: 'MAERSK LINE', transporteNacionalidad: '208', medioTransporte: 'MARITIMO',
     noViaje: 'V-2202', manifiestoNo: 'MAN-1', cargoControlNo: 'CC-1', fechaLlegadaReal: '2026-02-27',
   },
+  preliquidacion: null,
   digitador: 'Ana', gestor: 'Pedro',
   observaciones: [{ id: 'o1', fecha: '2026-01-02T00:00:00Z', usuario: 'Ana', texto: 'nota & más', publica: true }],
   assignedUserId: '2', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z',

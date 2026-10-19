@@ -26,6 +26,7 @@ export const emptyFormData = (tipoExpediente: TipoExpediente): ExpedienteFormDat
   pesoMercancia: { codigoMercancia: '', pesoBrutoKg: 0, pesoNetoKg: 0 },
   partidas: [],
   informacionAdicional: emptyInformacionAdicional(),
+  preliquidacion: null,
   digitador: '',
   gestor: '',
 });
@@ -49,6 +50,7 @@ export const toFormData = (e: Expediente): ExpedienteFormData => ({
   pesoMercancia: e.pesoMercancia,
   partidas: e.partidas,
   informacionAdicional: e.informacionAdicional,
+  preliquidacion: e.preliquidacion,
   digitador: e.digitador,
   gestor: e.gestor,
 });

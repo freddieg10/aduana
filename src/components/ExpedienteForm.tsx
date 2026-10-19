@@ -18,6 +18,7 @@ import { emptyPartida, tieneDetalle, withDerived } from '../utils/partida';
 import { validarVuce, validarNoTemporal } from '../utils/vuce';
 import { MEDIOS_TRANSPORTE } from '../data/catalogos';
 import PartidaDetailDialog from './PartidaDetailDialog';
+import PreliquidacionTab from './PreliquidacionTab';
 import { COUNTRIES, findCountryByCode } from '../data/countries';
 import { PUERTOS_RD } from '../data/puertos';
 import { useRelacionadosStore } from '../store/relacionadosStore';
@@ -31,7 +32,7 @@ export interface ExtraTab {
 interface Props {
   value: ExpedienteFormData;
   onChange: (next: ExpedienteFormData) => void;
-  /** Tabs appended after Renglones (the detail page adds the checklist here). */
+  /** Tabs appended after the built-in ones (the detail page adds the checklist here). */
   extraTabs?: ExtraTab[];
 }
 
@@ -136,6 +137,7 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
           <Tab label={t('detail.tabPartidas')} />
           <Tab label={t('detail.tabInfoAdicional')} />
           <Tab label={t('detail.tabVuce')} />
+          <Tab label={t('preliq.titulo')} />
           {extraTabs.map((x) => <Tab key={x.label} label={x.label} />)}
         </Tabs>
       </Box>
@@ -631,7 +633,10 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
         </CardContent></Card>
       )}
 
-      {extraTabs.map((x, i) => (tab === 7 + i ? <Box key={x.label}>{x.content}</Box> : null))}
+      {/* TAB 7 — PRELIQUIDACIÓN (mounted only while open: it lazy-loads the arancel) */}
+      {tab === 7 && <PreliquidacionTab value={value} onChange={onChange} />}
+
+      {extraTabs.map((x, i) => (tab === 8 + i ? <Box key={x.label}>{x.content}</Box> : null))}
 
       {detalleIdx !== null && value.partidas[detalleIdx] && (
         <PartidaDetailDialog

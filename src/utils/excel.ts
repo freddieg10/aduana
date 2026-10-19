@@ -387,6 +387,7 @@ export function rowsToExpedientes(rows: ParsedRow[]): NewExpediente[] {
       pesoMercancia: { codigoMercancia: str(f.codigoMercancia), pesoBrutoKg: num(f.pesoBrutoKg), pesoNetoKg: num(f.pesoNetoKg) },
       partidas,
       informacionAdicional: emptyInformacionAdicional(),
+      preliquidacion: null,
       digitador: str(f.digitador),
       gestor: str(f.gestor),
       observaciones,
