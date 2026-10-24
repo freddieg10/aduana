@@ -158,6 +158,27 @@ Source: product notes from Freddie, 2026-09-03 (SIGA screens + backlog). Done it
 - Digitadores and gestores are now managed here instead of being constants; the expediente form reads them from the settings store.
 - **Automatic USD rate** is not implemented: the browser cannot read aduanas.gob.do directly (CORS), so it needs a backend or a proxy. The page says so.
 
+## 4c. Cambios pedidos el 2026-10-23 — done
+
+From Freddie's list (UI, Excel import, XML), with the files he attached
+(`FORMATO PRELIQUIDACION WH26070084A.pdf`, `FORMATO XML WH26070084A_5866 2.xml`, the unit-code table
+and the field specs):
+
+- [x] Tabs merged and reordered: **Declaración** (declaración + partes) → **Renglones & Valores** →
+  Docs & Contenedores → Info. Adicional → VUCE → Preliquidación → Lista de Verificación.
+- [x] Renglones columns resizable and filterable (`RenglonesGrid`, a DataGrid, with a search bar).
+- [x] A renglón whose subpartida does not admit temporary products and has no product code is
+  highlighted yellow, with a warning triangle left of the eye.
+- [x] Preliquidación printable and exportable as PDF, laid out like SIGA's report, and showing FOB,
+  seguro, flete, otros, CIF in RD$ and US$, the furgones (with 20/40/45-foot counts), colecturía,
+  régimen, BL, importer and agent documents.
+- [x] Numeric fields can be emptied (`NumberField`; grid cells show 0 as empty).
+- [x] Excel import fills the detail behind the eye (vehicle, chassis, colour, motor, cc, certificate
+  of origin, temporal, alcohol grade, retail price, weight, additional description) and maps units
+  to SIGA codes. It also fixed `Boolean("NO") === true` for yes/no columns.
+- [x] SIGA XML fixed against the accepted DUA; the "Index and length must refer to a location within
+  the string" crash was the declarant code (see §6, *SIGA XML*).
+
 ## 5. Known technical debt
 
 - Persistence is `localStorage` only, scoped to the login session: data survives a refresh and is wiped on logout (`clearPersistedData`). Fine for a single-user POC; a backend is required for multi-user use. Every store is `persist`-wrapped, so swapping storage for an API is the main job.
@@ -278,6 +299,23 @@ is RD$64.66 — derived, not sourced.
 Seguro, flete and otros are declared for the whole shipment but taxed per line, so
 `preliquidar` prorates them by each line's share of FOB.
 
+**Rounding, as SIGA does it.** Reverse-engineered from a real SIGA preliquidación (BL WH26070084A,
+18 lines, tasa 60.92) and confirmed on every line: SIGA works in SQL Server `money` (four decimals).
+
+```
+gastos de la línea = round4((seguro + flete + otros) × FOB línea / FOB total)
+CIF RD$ (interno)  = round4((FOB línea + gastos) × tasa)        → shown as round2
+Gravamen           = round2(CIF interno × %)
+ISC                = round2((CIF interno + Gravamen) × %)
+ITBIS              = round2((CIF interno + Gravamen + ISC) × %)
+Totales            = round2(Σ montos sin redondear)             → may differ by cents from Σ shown
+Impuestos a pagar  = Total gravamen + Total ISC + Total ITBIS
+```
+
+Rounding the CIF to cents before the taxes, or summing the displayed lines, each miss SIGA by a few
+cents (17/18 and 15/18 lines). The report's RD$ value block converts each declared value on its
+own (CIF RD$ 2,844,719.10 there, against 2,844,719.11 as the sum of the lines).
+
 **Tasas por servicio aduanero** (Norma General 01-2023, in `src/data/tasasServicio.ts`) are
 charged on top of the taxes and supersede the Ley 226-06 figures still printed in training
 material: RD$258.26 per import DUA, US$110.31 per 20' container, US$147.07 per 40'/45'
@@ -323,6 +361,34 @@ also names "productos del tabaco" for the 20% retail rate — the table is appli
 ### SIGA XML
 
 The DGA publishes the XSDs SIGA accepts on upload ("Archivos XSD necesarios para trabajar en SIGA", aduanas.gob.do/de-interes/descargas). Copies are in `docs/siga-xsd/`. `buildSigaImportXml` / `buildSigaExportXml` follow `ImportDUA.xsd` / `ExportDUA.xsd` element by element. Fields the app does not track but the schema requires (`BrandCode`, `ModelCode`, `ContainerPlate`) are emitted empty so SIGA asks for them on upload. The DGA also publishes field specs as spreadsheets (*declaration-information* / *declaration-export-information*, 77 fields each, 39 and 41 required); where they disagree with the XSD the XSD wins, because that is what validates the upload — the spec sheets name the header field `ImDeclarationNo` and spell `CommercialInvoiceno`, while the schema elements are `FormNo` and `CommercialInvoiceNo`. The required-document blocks (`ImpDeclarationDocument` / `ExpDeclarationRequiredDocument`) are `minOccurs="0"` and are omitted entirely: the app tracks invoices, not permits, so there is nothing to put in them. `xml.test.ts` parses the XSDs at test time and asserts that every element the builders emit exists in the schema and follows its `xs:sequence` order. Codes for ContainerType, UnitCode, RequiredDocumentCode and ProductStatusCode are SIGA-internal and unknown; the app passes its own labels. Declaration numbers follow `<AreaCode>-IC01-<YYMM>-<seq>` for imports and liquidations `<AreaCode>-CL11-<YYMM>-<seq>`.
+
+**What SIGA really accepts** — from `docs/siga-muestras/ImportDUA-WH26070084A.xml`, a DUA that
+loaded without errors, where it departs from a literal reading of the XSD or the spec sheets:
+
+- **The cause of the upload crash** (`Index and length must refer to a location within the string`
+  in `SetImpDeclaration`): `DeclarantCode` was the agent's internal code `1`. SIGA slices party
+  codes by position, so `ConsigneeCode`, `ImporterCode` and `DeclarantCode` must all be
+  `[RNC|PAS|TID][país][número]` — the declarant is the brokerage, `RNC214130339198`. Store v9
+  gives ARMESSAG its RNC 130339198, and the export page flags any short party code.
+- The XSD has no `elementFormDefault`, so everything below the root is unqualified: the
+  declaration carries `xmlns=""`. The root also declares the `xsd`/`xsi` namespaces.
+- `FOBValue` is the **unit** price (Σ FOBValue × Qty = TotalFOB). Money columns take four
+  decimals, so with a fractional quantity FOBValue × Qty can miss the line FOB by cents (US$ 3,456
+  for 1,430.5 kg → 2.4159 × 1,430.5 = 3,455.94). SIGA itself works from unit prices.
+- `UnitCode` is the numeric SIGA code (table below); `HSCode` has no dots.
+- A product without a registered code is declared temporary (`TempProductYN` true) with its line
+  number as `ProductCode`. Unknown brand/model: code `0`, name `NA`. `ProductYear` and `VehicleCC`
+  are smallint: `0`, never empty. Unknown dates: `1900-01-01T12:00:00`. `DeclarationDate` is the
+  date at midnight.
+- Each product ends with a `Remark` repeating its description; the published XSD does not list it.
+- Left empty because the app has labels, not SIGA codes: `TransportMethod`, and
+  `TransportCompanyCode` unless a carrier code was entered. `BrokerEmployeeCode` and
+  `BrokerCompanyCode` are empty in the accepted DUA and stay empty.
+
+**SIGA unit codes** (`tabla-codigos-unidades-marzo-2018.xlsx`): 1 Unidades, 2 Gramos, 3 Kilogramos,
+4 Metros, 5 Par (32 also says Par), 6 Metros cúbicos, 7 Quintales, 8 Metros cuadrados, 9 Toneladas
+métricas, 10 Litros, 11 Barriles, 12 Galones, 13 1000 kWh, 14 Kilate. The IG0xx codes in the same
+file are package types (caja, bultos, furgón…), not units of measure. "Docenas" has no SIGA code.
 
 **Country codes:** ISO 3166-1 numeric, zero-padded to 3 chars (724 España, 356 India, 156 China, 764 Tailandia, 276 Alemania, 756 Suiza, 214 República Dominicana). Names uppercase Spanish. The DGA port table uses the same numeric codes, which confirms the convention.
 
@@ -389,3 +455,8 @@ Suplidores were left on their own `codigo` + `tid`; only the importer side was s
 | 2026-10-19 | A renglón with no rates adds nothing and marks the total incomplete, instead of defaulting to 0% gravamen and 18% ITBIS | The default looked like a real figure; an unknown is now visibly unknown |
 | 2026-10-19 | The arancel rates are matched to lines by geometry (monotone alignment per page), not reading order | Reading order misassigned rates on amended pages where the rate column is offset; the alignment also recovered six subpartidas the first pass dropped |
 | 2026-10-19 | Expediente detail page keyed by id | Found while testing: going detail-to-detail (bell, dashboard, reports) kept the previous expediente's form, and Save would have written it over the new one |
+| 2026-10-23 | A DUA that SIGA accepted outranks the XSD and the spec sheets, and is kept in `docs/siga-muestras` with a test that rebuilds it element by element | The XSD-faithful file crashed SIGA; the accepted one is the only evidence of what SIGA parses |
+| 2026-10-23 | Preliquidación rounding copied from SIGA's own report, not chosen | Freddie's sample report reconciles only with four-decimal intermediates and once-rounded totals; matching SIGA to the cent avoids explaining differences to clients |
+| 2026-10-23 | Renglón units stored as SIGA codes, migrated at store v9 | SIGA rejects names; storing the code removes a translation step that could drift. Unknown legacy values ("DOCENAS") stay visible rather than guessed |
+| 2026-10-23 | PDF drawn with jsPDF + autotable, loaded on demand, previewed in the browser's viewer for printing | One renderer for paper and file; html-to-canvas would rasterize the text; the libraries stay out of the main bundle |
+| 2026-10-23 | `NumberField` with local text for numeric inputs | A number-bound `type="number"` field cannot be emptied; Freddie could not delete the default 0 |

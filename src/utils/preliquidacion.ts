@@ -57,6 +57,10 @@ export interface LineaPreliquidacion {
   sinTasas: boolean;
 }
 
+/**
+ * Totals are the rounded sum of the unrounded line amounts, as in SIGA's report, so a total
+ * can differ by a few cents from the sum of the rounded lines shown above it.
+ */
 export interface TotalesPreliquidacion {
   cifRd: number;
   gravamen: number;
@@ -88,7 +92,14 @@ export interface EntradaPreliquidacion {
   resolverTasas: (p: Partida) => TasasRenglon | undefined;
 }
 
-const redondear = (n: number) => Math.round(n * 100) / 100;
+/**
+ * Half-up rounding to `decimales`, done on the decimal string so 1.005 rounds to 1.01 the way
+ * SIGA's SQL Server ROUND does, not to 1.00 as `Math.round(n * 100) / 100` would.
+ */
+export function redondear(n: number, decimales = 2): number {
+  if (!Number.isFinite(n)) return 0;
+  return Number(`${Math.round(Number(`${n}e${decimales}`))}e-${decimales}`);
+}
 
 /**
  * Seguro, flete and otros are declared for the whole shipment but taxed per line, so they are
@@ -102,6 +113,13 @@ function prorratear(partidas: Partida[], monto: number): number[] {
   return partidas.map((p) => (monto * p.valorFob) / fobTotal);
 }
 
+/*
+ * Rounding follows SIGA's own preliquidación, reverse-engineered from a real one
+ * (docs/siga-muestras, 18 lines, every figure matches to the cent): SIGA works in SQL Server
+ * `money`, four decimals. Seguro + flete + otros are prorated together and kept at four
+ * decimals, the CIF is converted to RD$ and kept at four decimals, and each tax is computed on
+ * that four-decimal CIF and rounded to cents. Only the displayed CIF is rounded to cents.
+ */
 export function preliquidar({ partidas, valores, contenedores = [], resolverTasas }: EntradaPreliquidacion): Preliquidacion {
   const advertencias: string[] = [];
   const tasaCambio = valores.tasaCambio > 0 ? valores.tasaCambio : 0;
@@ -110,6 +128,10 @@ export function preliquidar({ partidas, valores, contenedores = [], resolverTasa
   const seguro = prorratear(partidas, valores.seguro);
   const flete = prorratear(partidas, valores.flete);
   const otros = prorratear(partidas, valores.otros);
+  const gastos = prorratear(partidas, valores.seguro + valores.flete + valores.otros);
+
+  /* Unrounded per-line amounts: SIGA totals these and rounds once, not the rounded lines. */
+  const crudos: { cifRd: number; gravamen: number; isc: number; itbis: number }[] = [];
 
   const lineas: LineaPreliquidacion[] = partidas.map((p, i) => {
     const resueltas = resolverTasas(p);
@@ -117,9 +139,10 @@ export function preliquidar({ partidas, valores, contenedores = [], resolverTasa
     if (!resueltas) advertencias.push(`sinTasas:${p.codigoPartida}`);
 
     const fobUsd = p.valorFob;
-    const cifUsd = fobUsd + seguro[i] + flete[i] + otros[i];
-    const cifRd = cifUsd * tasaCambio;
-    const gravamen = cifRd * (tasas.gravamen / 100);
+    const cifUsd = fobUsd + redondear(gastos[i], 4);
+    const cifRd = redondear(cifUsd * tasaCambio, 4);
+    const gravamenCrudo = cifRd * (tasas.gravamen / 100);
+    const gravamen = redondear(gravamenCrudo);
 
     let iscAdValorem = 0;
     let iscEspecifico = 0;
@@ -135,8 +158,11 @@ export function preliquidar({ partidas, valores, contenedores = [], resolverTasa
       if (p.precioVentaMenor <= 0) advertencias.push(`precioVentaMenor:${p.codigoPartida}`);
       if (tasas.iscEspecificoTipo === 'alcohol' && p.gradoAlcohol <= 0) advertencias.push(`gradoAlcohol:${p.codigoPartida}`);
     }
-    const isc = iscAdValorem + iscEspecifico;
-    const itbis = (cifRd + gravamen + isc) * (tasas.itbis / 100);
+    const iscCrudo = iscAdValorem + iscEspecifico;
+    const isc = redondear(iscCrudo);
+    const itbisCrudo = (cifRd + gravamen + isc) * (tasas.itbis / 100);
+    const itbis = redondear(itbisCrudo);
+    crudos.push({ cifRd, gravamen: gravamenCrudo, isc: iscCrudo, itbis: itbisCrudo });
 
     return {
       partidaId: p.id,
@@ -160,17 +186,18 @@ export function preliquidar({ partidas, valores, contenedores = [], resolverTasa
     };
   });
 
-  const suma = (f: (l: LineaPreliquidacion) => number) => redondear(lineas.reduce((s, l) => s + f(l), 0));
-  const impuestos = suma((l) => l.gravamen + l.isc + l.itbis);
+  const suma = (k: keyof (typeof crudos)[number]) => redondear(crudos.reduce((s, c) => s + c[k], 0));
+  const [cifRd, gravamen, isc, itbis] = [suma('cifRd'), suma('gravamen'), suma('isc'), suma('itbis')];
+  const impuestos = redondear(gravamen + isc + itbis);
   const tasaServicio = redondear(calcularTasaServicio(contenedores, tasaCambio));
 
   return {
     lineas,
     totales: {
-      cifRd: suma((l) => l.cifRd),
-      gravamen: suma((l) => l.gravamen),
-      isc: suma((l) => l.isc),
-      itbis: suma((l) => l.itbis),
+      cifRd,
+      gravamen,
+      isc,
+      itbis,
       impuestos,
       tasaServicio,
       total: redondear(impuestos + tasaServicio),

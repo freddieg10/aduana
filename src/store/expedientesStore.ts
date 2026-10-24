@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ExpedienteStatus } from '../types';
 import type { Expediente, InformacionAdicional, Observacion, Partida } from '../types';
-import { ADMINISTRACIONES, DEFAULT_CHECKLIST_LABELS, DIGITADORES, GESTORES, PAIS_RD, TIPO_DESPACHO_LEGACY } from '../data/catalogos';
+import { ADMINISTRACIONES, AGENTE_ADUANAL_DEFAULT, DEFAULT_CHECKLIST_LABELS, DIGITADORES, GESTORES, PAIS_RD, TIPO_DESPACHO_LEGACY } from '../data/catalogos';
 import { parseLegacyNotes, makeObservacion } from '../utils/observaciones';
 import { migratePartida } from '../utils/partida';
 
@@ -43,7 +43,7 @@ const SEED_DATA: Expediente[] = [
       facturaComercialNo: '4600527',
     },
     importador: { codigo: '101-00001-1', nombre: 'BRAVO S A', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
-    agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+    agenteAduanal: { ...AGENTE_ADUANAL_DEFAULT },
     consignatario: { codigo: '101-00001-1', nombre: 'BRAVO S A', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [],
@@ -79,7 +79,7 @@ const SEED_DATA: Expediente[] = [
       facturaComercialNo: '5002',
     },
     importador: { codigo: '130-00002-2', nombre: 'TEXTILES MODERNOS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
-    agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+    agenteAduanal: { ...AGENTE_ADUANAL_DEFAULT },
     consignatario: { codigo: '130-00002-2', nombre: 'TEXTILES MODERNOS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ tipoDocumento: 'TID', codigo: 'IN-AAACM1234A', nombre: 'Mumbai Textiles Co.', nacionalidad: 'INDIA' }],
@@ -107,7 +107,7 @@ const SEED_DATA: Expediente[] = [
       facturaComercialNo: '4980',
     },
     importador: { codigo: '130-00003-3', nombre: 'ELECTRONICA GLOBAL RD', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
-    agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+    agenteAduanal: { ...AGENTE_ADUANAL_DEFAULT },
     consignatario: { codigo: '130-00003-3', nombre: 'ELECTRONICA GLOBAL RD', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ tipoDocumento: 'TID', codigo: 'CN-91440300MA5', nombre: 'Shenzhen Electronics Ltd', nacionalidad: 'CHINA' }],
@@ -137,7 +137,7 @@ const SEED_DATA: Expediente[] = [
       facturaComercialNo: '5010',
     },
     importador: { codigo: '130-00004-4', nombre: 'ALIMENTOS DEL CARIBE SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
-    agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+    agenteAduanal: { ...AGENTE_ADUANAL_DEFAULT },
     consignatario: { codigo: '130-00004-4', nombre: 'ALIMENTOS DEL CARIBE SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ tipoDocumento: 'TID', codigo: 'TH-0105555000031', nombre: 'Bangkok Foods Export', nacionalidad: 'TAILANDIA' }],
@@ -166,7 +166,7 @@ const SEED_DATA: Expediente[] = [
       facturaComercialNo: '5015',
     },
     importador: { codigo: '130-00005-5', nombre: 'AUTOPARTES EXPRESS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
-    agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+    agenteAduanal: { ...AGENTE_ADUANAL_DEFAULT },
     consignatario: { codigo: '130-00005-5', nombre: 'AUTOPARTES EXPRESS SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ tipoDocumento: 'TID', codigo: 'DE123456789', nombre: 'Hamburg Auto GmbH', nacionalidad: 'ALEMANIA' }],
@@ -196,7 +196,7 @@ const SEED_DATA: Expediente[] = [
       facturaComercialNo: '5020',
     },
     importador: { codigo: '130-00006-6', nombre: 'FARMACEUTICA CENTRAL SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
-    agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+    agenteAduanal: { ...AGENTE_ADUANAL_DEFAULT },
     consignatario: { codigo: '130-00006-6', nombre: 'FARMACEUTICA CENTRAL SRL', tipoDocumento: 'RNC', paisDocumento: PAIS_RD },
     compradorExportacion: { codigo: '0', nombre: '' },
     suplidores: [{ tipoDocumento: 'TID', codigo: 'CHE-123.456.789', nombre: 'Basel Pharma AG', nacionalidad: 'SUIZA' }],
@@ -251,6 +251,8 @@ const ADMIN_BY_NAME = new Map(ADMINISTRACIONES.map((a) => [normName(a.nombre), a
  * v7:       observaciones gained `publica` (default private) and the expediente gained
  *           `informacionAdicional`.
  * v8:       the expediente gained `preliquidacion` (null until preliquidated).
+ * v9:       renglón units became SIGA unit codes ("KILOGRAMOS" -> "3", in migratePartida), and
+ *           the brokerage's agente aduanal got its RNC in place of the internal code '1'.
  */
 const IMPORTADOR_CODIGO_LEGACY: Record<string, string> = {
   '8115': '101-00001-1',
@@ -298,6 +300,8 @@ export function migrateExpediente(raw: Record<string, unknown>): Expediente {
 
   upgraded.informacionAdicional = { ...emptyInformacionAdicional(), ...(upgraded.informacionAdicional ?? {}) };
   upgraded.preliquidacion = upgraded.preliquidacion ?? null;
+  const agente = upgraded.agenteAduanal;
+  if (agente && agente.codigo === '1' && /ARMESSAG/i.test(agente.nombre)) upgraded.agenteAduanal = { ...AGENTE_ADUANAL_DEFAULT };
   upgraded.observaciones = upgraded.observaciones.map((o) => ({ ...o, publica: o.publica ?? false }));
 
   if (Array.isArray(upgraded.partidas)) {
@@ -422,7 +426,7 @@ export const useExpedientesStore = create<ExpedientesState>()(
     }),
     {
       name: 'aduana-expedientes',
-      version: 8,
+      version: 9,
       partialize: (s) => ({ expedientes: s.expedientes }),
       migrate: (persisted) => {
         const state = persisted as { expedientes?: Record<string, unknown>[] };

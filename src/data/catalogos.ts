@@ -212,10 +212,78 @@ export const findRegimen = (codigo: string) => REGIMENES.find((r) => r.codigo ==
 /** Transport methods (SIGA TransportMethod). SIGA's own codes are not published. */
 export const MEDIOS_TRANSPORTE = ['MARITIMO', 'AEREO', 'TERRESTRE', 'MULTIMODAL'];
 
-export const UNIDADES = ['KILOGRAMOS', 'UNIDADES', 'LITROS', 'METROS', 'PARES', 'DOCENAS', 'TONELADAS'];
+/**
+ * SIGA unit codes (UnitCode), from the DGA "tabla maestra de códigos de unidades" (marzo 2018,
+ * tabla-codigos-unidades-marzo-2018.xlsx). Renglones store the code; SIGA rejects the names.
+ * The table also lists 32 "Par" next to 5 "Par" — 5 is the one offered here. The IG0xx codes in
+ * the same file are package types (bultos), not units of measure.
+ */
+export interface UnidadSiga {
+  codigo: string;
+  nombre: string;
+}
 
-/** The brokerage itself; default agente aduanal on every new expediente. */
-export const AGENTE_ADUANAL_DEFAULT = { codigo: '1', nombre: 'ARMESSAG, SRL' };
+export const UNIDADES: UnidadSiga[] = [
+  { codigo: '1', nombre: 'UNIDADES' },
+  { codigo: '2', nombre: 'GRAMOS' },
+  { codigo: '3', nombre: 'KILOGRAMOS' },
+  { codigo: '4', nombre: 'METROS' },
+  { codigo: '5', nombre: 'PAR' },
+  { codigo: '6', nombre: 'METROS CÚBICOS' },
+  { codigo: '7', nombre: 'QUINTALES' },
+  { codigo: '8', nombre: 'METROS CUADRADOS' },
+  { codigo: '9', nombre: 'TONELADAS MÉTRICAS' },
+  { codigo: '10', nombre: 'LITROS' },
+  { codigo: '11', nombre: 'BARRILES' },
+  { codigo: '12', nombre: 'GALONES' },
+  { codigo: '13', nombre: '1000 KWH' },
+  { codigo: '14', nombre: 'KILATE' },
+];
+
+export const UNIDAD_DEFAULT = '3';
+export const UNIDAD_UNIDADES = '1';
+export const UNIDAD_LITROS = '10';
+
+const sinAcentos = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/** Names and abbreviations seen in spreadsheets and in data saved before units were coded. */
+const UNIDAD_ALIAS: Record<string, string> = {
+  UNIDAD: '1', UNIDADES: '1', UND: '1', UNDS: '1', UN: '1', U: '1', UNIT: '1', UNITS: '1', PCS: '1', PZA: '1', PIEZA: '1', PIEZAS: '1',
+  GRAMO: '2', GRAMOS: '2', G: '2', GR: '2', GRS: '2',
+  KILOGRAMO: '3', KILOGRAMOS: '3', KG: '3', KGS: '3', KILO: '3', KILOS: '3',
+  METRO: '4', METROS: '4', M: '4', MTS: '4',
+  PAR: '5', PARES: '5',
+  METROCUBICO: '6', METROSCUBICOS: '6', M3: '6',
+  QUINTAL: '7', QUINTALES: '7', QQ: '7',
+  METROCUADRADO: '8', METROSCUADRADOS: '8', M2: '8',
+  TONELADA: '9', TONELADAS: '9', TONELADAMETRICA: '9', TONELADASMETRICAS: '9', TM: '9', TON: '9',
+  LITRO: '10', LITROS: '10', L: '10', LT: '10', LTS: '10',
+  BARRIL: '11', BARRILES: '11',
+  GALON: '12', GALONES: '12', GAL: '12',
+  KILATE: '14', KILATES: '14',
+};
+
+/**
+ * The SIGA code for a unit given as a code, a name or a common abbreviation. Anything not
+ * recognised comes back unchanged, so it stays visible instead of being silently replaced.
+ */
+export function unidadSiga(valor: string): string {
+  const v = String(valor ?? '').trim();
+  if (!v) return '';
+  if (UNIDADES.some((u) => u.codigo === v)) return v;
+  if (v === '32') return '5';
+  return UNIDAD_ALIAS[sinAcentos(v)] ?? v;
+}
+
+/** Display name of a unit code ("3" -> "KILOGRAMOS"); unknown values are shown as they are. */
+export const nombreUnidad = (codigo: string) => UNIDADES.find((u) => u.codigo === codigo)?.nombre ?? codigo;
+
+/**
+ * The brokerage itself; default agente aduanal on every new expediente. SIGA reads the
+ * declarant as a party code (RNC214130339198 in a DUA it accepted), so the agent needs its
+ * real document: the internal code '1' used before made SIGA's import crash.
+ */
+export const AGENTE_ADUANAL_DEFAULT = { codigo: '130339198', nombre: 'ARMESSAG, SRL', tipoDocumento: 'RNC' as const, paisDocumento: '214' };
 
 /** Default RD$ per USD used when a new expediente is created. */
 export const TASA_CAMBIO_DEFAULT = 65;

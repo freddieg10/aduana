@@ -1,6 +1,7 @@
 import type { Expediente } from '../types';
 import { entidadKey } from './documento';
 import { evaluarArt52 } from './art52';
+import { nombreUnidad } from '../data/catalogos';
 
 /* ------------------------------------------------------------------ */
 /* Shared filtering                                                     */
@@ -168,7 +169,7 @@ export function historialProductos(expedientes: Expediente[], clienteKey?: strin
         codigoProducto: p.codigoProducto,
         referencia,
         descripcion: p.descripcion,
-        unidad: p.unidad,
+        unidad: nombreUnidad(p.unidad),
         pais: p.paisOrigen,
         suplidor,
         expedientes: [],

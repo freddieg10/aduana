@@ -1,5 +1,5 @@
 import type { Partida } from '../types';
-import { ESTADO_PRODUCTO_DEFAULT } from '../data/catalogos';
+import { ESTADO_PRODUCTO_DEFAULT, UNIDAD_DEFAULT, unidadSiga } from '../data/catalogos';
 
 /** Unit price is always derived; the grid shows it read-only. */
 export const calcUnitario = (valorFob: number, cantidad: number) =>
@@ -17,7 +17,7 @@ export const emptyPartida = (): Partida => ({
   descripcion: '',
   organico: false,
   cantidad: 0,
-  unidad: 'KILOGRAMOS',
+  unidad: UNIDAD_DEFAULT,
   paisOrigen: '',
   valorFob: 0,
   unitario: 0,
@@ -47,6 +47,8 @@ export function migratePartida(raw: Record<string, unknown>): Partida {
     ...p,
     id: p.id ?? base.id,
     estadoProducto: p.estadoProducto || ESTADO_PRODUCTO_DEFAULT,
+    // Units were stored by name ("KILOGRAMOS") before they followed SIGA's codes.
+    unidad: unidadSiga(p.unidad ?? '') || base.unidad,
     vehiculo: { ...base.vehiculo, ...(p.vehiculo ?? {}) },
   } as Partida);
 }

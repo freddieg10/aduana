@@ -131,3 +131,54 @@ describe('del código al total', () => {
     )).toBe(235_227);
   });
 });
+
+/*
+ * A real SIGA preliquidación (BL WH26070084A, MARCHA EIRL, 03/09/2026, tasa 60.92), with the
+ * lines of the DUA that produced it (docs/siga-muestras/ImportDUA-WH26070084A.xml). SIGA's
+ * per-line CIF only reconciles with four-decimal intermediates, so this pins the rounding
+ * rule as well as the rates: every line's CIF and ITBIS and every total must match exactly.
+ */
+describe('preliquidación real de SIGA', () => {
+  // [partida, FOB unitario US$, cantidad, CIF RD$ de SIGA, ITBIS de SIGA]
+  const LINEAS: [string, number, number, number, number][] = [
+    ['8421.99.90', 6.0, 300, 134463.23, 24203.38],
+    ['8421.99.90', 11.5, 800, 687256.53, 123706.18],
+    ['8421.21.10', 2.75, 200, 41085.99, 7395.48],
+    ['8421.21.10', 0.5, 3000, 112052.7, 20169.49],
+    ['8421.21.10', 0.75, 3000, 168079.04, 30254.23],
+    ['8421.21.10', 0.75, 3000, 168079.04, 30254.23],
+    ['8421.21.10', 0.75, 3000, 168079.04, 30254.23],
+    ['8421.21.10', 1.75, 1000, 130728.14, 23531.07],
+    ['8421.21.10', 1.25, 1000, 93377.24, 16807.9],
+    ['8421.99.90', 7.5, 1002, 561384.0, 101049.12],
+    ['8302.50.00', 1.0, 2000, 149403.6, 32271.18],
+    ['8421.21.10', 4.25, 600, 190489.58, 34288.12],
+    ['8421.21.10', 4.0, 204, 60956.67, 10972.2],
+    ['8421.21.10', 0.5, 400, 14940.36, 2689.27],
+    ['8421.21.10', 0.5, 500, 18675.45, 3361.58],
+    ['8421.21.10', 0.75, 500, 28013.17, 5042.37],
+    ['8421.21.10', 14.25, 100, 106450.06, 19161.01],
+    ['8421.21.10', 0.75, 200, 11205.27, 2016.95],
+  ];
+  const partidas = LINEAS.map(([codigoPartida, unitario, cantidad], i) =>
+    withDerived({ ...emptyPartida(), id: String(i), codigoPartida, cantidad, valorFob: unitario * cantidad }));
+  const r = preliquidar({
+    partidas,
+    valores: { tasaCambio: 60.92, valorFobTotal: 38_081, seguro: 234.98, flete: 8_380, otros: 0, valorCifTotal: 46_695.98 },
+    resolverTasas: (x) => sugerir(x.codigoPartida)?.tasas,
+  });
+
+  it('cada renglón: CIF e ITBIS al centavo', () => {
+    expect(r.lineas.map((l) => l.cifRd)).toEqual(LINEAS.map((l) => l[3]));
+    expect(r.lineas.map((l) => l.itbis)).toEqual(LINEAS.map((l) => l[4]));
+  });
+
+  it('el soporte de hierro (8302.50.00) es el único con gravamen: 20%', () => {
+    expect(r.lineas[10]).toMatchObject({ gravamen: 29_880.72, total: 62_151.9 });
+    expect(r.lineas.filter((l) => l.gravamen > 0)).toHaveLength(1);
+  });
+
+  it('los totales del reporte', () => {
+    expect(r.totales).toMatchObject({ cifRd: 2_844_719.11, gravamen: 29_880.72, isc: 0, itbis: 517_427.97, impuestos: 547_308.69 });
+  });
+});

@@ -10,6 +10,7 @@ import { useExpedientesStore, computeProgress } from '../../store/expedientesSto
 import { ExpedienteStatus } from '../../types';
 import { fmtDate } from '../../utils/date';
 import { entidadKey } from '../../utils/documento';
+import { nombreUnidad } from '../../data/catalogos';
 import ObservationsTimeline from '../../components/ObservationsTimeline';
 
 const STATUS_ORDER = Object.values(ExpedienteStatus);
@@ -133,7 +134,7 @@ export default function ClientPortalDetailPage() {
                         <TableCell>{p.codigoPartida}</TableCell>
                         <TableCell>{p.descripcion}</TableCell>
                         <TableCell align="right">{p.cantidad}</TableCell>
-                        <TableCell>{p.unidad}</TableCell>
+                        <TableCell>{nombreUnidad(p.unidad)}</TableCell>
                         <TableCell>{p.paisOrigen}</TableCell>
                         <TableCell align="right">{p.valorFob.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       </TableRow>

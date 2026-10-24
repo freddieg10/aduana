@@ -3,7 +3,7 @@ import { escapeXml } from './xml';
 import { fmtDate } from './date';
 import { findCountryByCode } from '../data/countries';
 import { findAcuerdo, findEstadoProducto } from '../data/catalogos';
-import { AGENTE_ADUANAL_DEFAULT } from '../data/catalogos';
+import { AGENTE_ADUANAL_DEFAULT, nombreUnidad } from '../data/catalogos';
 
 const esc = (v: unknown) => escapeXml(v);
 const money = (n: number) => n.toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -29,7 +29,7 @@ export function buildHojaRegistroHtml(e: Expediente, now = new Date()): string {
       <td>${esc(p.codigoProducto)}</td>
       <td>${esc(p.descripcion)}</td>
       <td class="num">${esc(p.cantidad)}</td>
-      <td>${esc(p.unidad)}</td>
+      <td>${esc(nombreUnidad(p.unidad))}</td>
       <td>${esc(p.paisOrigen)}</td>
       <td>${esc(findEstadoProducto(p.estadoProducto)?.nombre ?? p.estadoProducto)}</td>
       <td class="num">${money(p.valorFob)}</td>

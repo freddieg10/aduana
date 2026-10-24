@@ -1,9 +1,10 @@
-import type { Expediente } from '../types';
+import type { Expediente, Partida } from '../types';
 import { computeProgress } from './progress';
 import { findCountryByName } from '../data/countries';
 import { findPuerto } from '../data/puertos';
-import { PAIS_RD, REMARK_ESTANDAR, tipoDespachoCodigo } from '../data/catalogos';
+import { PAIS_RD, REMARK_ESTANDAR, tipoDespachoCodigo, unidadSiga } from '../data/catalogos';
 import { sigaPartyCode } from './documento';
+import { normalizarHs } from './preliquidacion';
 
 export function escapeXml(s: unknown): string {
   return String(s ?? '')
@@ -99,69 +100,105 @@ export function buildFullXml(expedientes: Expediente[], now = new Date()): strin
 export const SIGA_NS_IMPORT = 'http://aduanas.gob.do/XSD/ImportClearance/ImportDUA.xsd';
 export const SIGA_NS_EXPORT = 'http://aduanas.gob.do/XSD/ExportClearance/ExportDUA.xsd';
 
-/** xs:dateTime from a YYYY-MM-DD (or ISO) string; empty input falls back to `now`. */
-function xsDateTime(value: string, now: Date): string {
-  const d = value ? new Date(value) : now;
-  if (isNaN(d.getTime())) return now.toISOString().slice(0, 19);
-  return value.length <= 10 ? `${value}T00:00:00` : d.toISOString().slice(0, 19);
-}
+/*
+ * What SIGA actually accepts, taken from a DUA it loaded without errors
+ * (docs/siga-muestras/ImportDUA-WH26070084A.xml) where it differs from a literal reading of
+ * the XSD:
+ *  - the schema has no elementFormDefault, so everything below the root is unqualified: the
+ *    declaration carries xmlns="" or SIGA's DataSet finds no columns at all;
+ *  - party codes (consignee, importer, declarant) are [type][country][number]: SIGA slices
+ *    them, and a short one ("1") throws "Index and length must refer to a location within
+ *    the string" before anything else is read;
+ *  - FOBValue is the UNIT price (FOBValue × Qty adds up to TotalFOB), UnitCode is the numeric
+ *    SIGA code, HSCode has no dots;
+ *  - unknown dates are 1900-01-01T12:00:00, unknown brand/model codes 0 with name NA, and a
+ *    product without a registered code is declared temporary with its line number as code;
+ *  - each product repeats its description in a Remark the published XSD does not list.
+ */
+const SIN_FECHA = '1900-01-01T12:00:00';
+
+/** xs:dateTime at midnight for a YYYY-MM-DD; empty means unknown. */
+const fechaSiga = (ymd: string) => (/^\d{4}-\d{2}-\d{2}/.test(ymd) ? `${ymd.slice(0, 10)}T00:00:00` : SIN_FECHA);
+
+/** Today's date (local, not UTC) at midnight, as SIGA dates its declarations. */
+const hoySiga = (now: Date) => {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}T00:00:00`;
+};
 
 const bool = (b: boolean) => (b ? 'true' : 'false');
 const countryCode = (name: string) => findCountryByName(name)?.codigo ?? '';
 const portCode = (value: string) => findPuerto(value)?.codigo ?? value;
+/** SQL Server `money` columns take four decimals. */
+const money = (n: number) => (Number.isFinite(n) ? n.toFixed(4) : '0.0000');
+const entero = (v: string | number) => String(Math.round(Number(String(v).replace(/[^\d.-]/g, '')) || 0));
+
+/** The declarant is the agente aduanal, read by SIGA as a party code like any other. */
+const declarante = (e: Expediente) => ({
+  codigo: sigaPartyCode({ codigo: e.agenteAduanal.codigo, tipoDocumento: e.agenteAduanal.tipoDocumento ?? 'RNC', paisDocumento: e.agenteAduanal.paisDocumento }),
+  nacionalidad: e.agenteAduanal.paisDocumento || PAIS_RD,
+});
+
+/** The product block both DUAs share, element for element. */
+function producto(p: Partida, i: number, D: number, impo: boolean): string[] {
+  const codigo = p.codigoProducto.trim();
+  return [
+    el('HSCode', {}, normalizarHs(p.codigoPartida), D),
+    el('ProductCode', {}, codigo || String(i + 1), D),
+    el('ProductName', {}, p.descripcion, D),
+    el('BrandCode', {}, '0', D),
+    el('BrandName', {}, p.marca.trim() || 'NA', D),
+    el('ModelCode', {}, '0', D),
+    el('ModelName', {}, p.modelo.trim() || 'NA', D),
+    el('ProductStatusCode', {}, p.estadoProducto, D),
+    el('ProductYear', {}, entero(p.anio), D),
+    el('FOBValue', {}, money(p.cantidad > 0 ? p.valorFob / p.cantidad : p.valorFob), D),
+    el('UnitCode', {}, unidadSiga(p.unidad), D),
+    el('Qty', {}, money(p.cantidad), D),
+    el('Weight', {}, num(p.pesoKg), D),
+    el('ProductSpecification', {}, p.especificacion, D),
+    el('TempProductYN', {}, bool(p.temporal || !codigo), D),
+    el('CertificateOrignYN', {}, bool(p.certificadoOrigen), D),
+    el('CertificateOriginNo', {}, p.certificadoOrigenNo, D),
+    el('OriginCountry', {}, countryCode(p.paisOrigen) || (impo ? '' : PAIS_RD), D),
+    el('OrganicYN', {}, bool(p.organico), D),
+    el('GradeAlcohol', {}, num(p.gradoAlcohol), D),
+    el('CustomerSalesPrice', {}, money(p.precioVentaMenor), D),
+    el('ProductSerialNo', {}, p.serial, D),
+    el('VehicleType', {}, p.vehiculo.tipo, D),
+    el('VehicleChassis', {}, p.vehiculo.chasis, D),
+    el('VehicleColor', {}, p.vehiculo.color, D),
+    el('VehicleMotor', {}, p.vehiculo.motor, D),
+    el('VehicleCC', {}, entero(p.vehiculo.cc), D),
+    el('ProductDescription', {}, p.descripcionAdicional || p.descripcion, D),
+    el('Remark', {}, p.descripcion, D),
+  ];
+}
+
+const contenedor = (c: Expediente['contenedores'][number], D: number) => [
+  el('ContainerType', {}, c.tipo, D),
+  el('ContainerNo', {}, c.numero, D),
+  el('SealNo1', {}, c.sello1, D),
+  el('SealNo2', {}, c.sello2, D),
+  el('ContainerPlate', {}, '', D),
+];
 
 function impDeclaration(e: Expediente, now: Date): string {
   const d = e.declaracion;
   const ia = e.informacionAdicional;
   const D = 2;
-  const products = e.partidas.map((p) => el('ImpDeclarationProduct', {}, [
-    el('HSCode', {}, p.codigoPartida, D + 2),
-    el('ProductCode', {}, p.codigoProducto, D + 2),
-    el('ProductName', {}, p.descripcion, D + 2),
-    el('BrandCode', {}, '', D + 2),
-    el('BrandName', {}, p.marca || 'N/A', D + 2),
-    el('ModelCode', {}, '', D + 2),
-    el('ModelName', {}, p.modelo || 'N/A', D + 2),
-    el('ProductStatusCode', {}, p.estadoProducto, D + 2),
-    el('ProductYear', {}, p.anio, D + 2),
-    el('FOBValue', {}, num(p.valorFob), D + 2),
-    el('UnitCode', {}, p.unidad, D + 2),
-    el('Qty', {}, String(p.cantidad), D + 2),
-    el('QtyPresentation', {}, String(Math.round(p.cantidad)), D + 2),
-    el('Weight', {}, num(p.pesoKg), D + 2),
-    el('ProductSpecification', {}, p.especificacion, D + 2),
-    el('TempProductYN', {}, bool(p.temporal), D + 2),
-    el('CertificateOrignYN', {}, bool(p.certificadoOrigen), D + 2),
-    el('CertificateOriginNo', {}, p.certificadoOrigenNo, D + 2),
-    el('OriginCountry', {}, countryCode(p.paisOrigen), D + 2),
-    el('OrganicYN', {}, bool(p.organico), D + 2),
-    el('GradeAlcohol', {}, num(p.gradoAlcohol), D + 2),
-    el('CustomerSalesPrice', {}, num(p.precioVentaMenor), D + 2),
-    el('ProductSerialNo', {}, p.serial, D + 2),
-    el('VehicleType', {}, p.vehiculo.tipo, D + 2),
-    el('VehicleChassis', {}, p.vehiculo.chasis, D + 2),
-    el('VehicleColor', {}, p.vehiculo.color, D + 2),
-    el('VehicleMotor', {}, p.vehiculo.motor, D + 2),
-    el('VehicleCC', {}, String(p.vehiculo.cc), D + 2),
-    el('ProductDescription', {}, p.descripcionAdicional || p.descripcion, D + 2),
-  ], D + 1));
+  const decl = declarante(e);
 
   const suppliers = e.suplidores.map((s) => el('ImpDeclarationSupplier', {}, [
     el('ForeignSupplierName', {}, s.nombre, D + 2),
     el('ForeignSupplierCode', {}, sigaPartyCode({ codigo: s.codigo, tipoDocumento: s.tipoDocumento ?? 'TID', paisDocumento: countryCode(s.nacionalidad) }), D + 2),
     el('ForeignSupplierNationality', {}, countryCode(s.nacionalidad) || s.nacionalidad, D + 2),
   ], D + 1));
+  const products = e.partidas.map((p, i) => el('ImpDeclarationProduct', {}, producto(p, i, D + 2, true), D + 1));
+  const containers = e.contenedores.map((c) => el('ImpDeclarationContainer', {}, contenedor(c, D + 2), D + 1));
 
-  const containers = e.contenedores.map((c) => el('ImpDeclarationContainer', {}, [
-    el('ContainerType', {}, c.tipo, D + 2),
-    el('ContainerNo', {}, c.numero, D + 2),
-    el('SealNo1', {}, c.sello1, D + 2),
-    el('SealNo2', {}, c.sello2, D + 2),
-    el('ContainerPlate', {}, '', D + 2),
-  ], D + 1));
-
-  return el('ImpDeclaration', {}, [
-    el('DeclarationDate', {}, xsDateTime('', now), D),
+  return el('ImpDeclaration', { xmlns: '' }, [
+    el('DeclarationDate', {}, hoySiga(now), D),
     el('ClearanceType', {}, tipoDespachoCodigo(d.tipoDespacho), D),
     el('AreaCode', {}, d.administracionCodigo, D),
     el('FormNo', {}, d.idSecuencia, D),
@@ -175,25 +212,27 @@ function impDeclaration(e: Expediente, now: Date): string {
     el('DestinationLocationCode', {}, d.depositoDestino, D),
     el('EntryPort', {}, portCode(d.puertoEntrada), D),
     el('DepartureCountryCode', {}, d.paisProcedenciaCodigo, D),
-    el('TransportCompanyCode', {}, ia.transportistaCodigo || ia.transportistaNombre, D),
+    el('TransportCompanyCode', {}, ia.transportistaCodigo, D),
     el('TransportNationality', {}, ia.transporteNacionalidad, D),
-    el('TransportMethod', {}, ia.medioTransporte, D),
-    el('EntryPlanDate', {}, xsDateTime(d.eta, now), D),
-    el('EntryDate', {}, xsDateTime(ia.fechaLlegadaReal || d.eta, now), D),
+    // SIGA's transport-method codes are not published; the app's labels are not codes.
+    el('TransportMethod', {}, '', D),
+    el('EntryPlanDate', {}, fechaSiga(d.eta), D),
+    el('EntryDate', {}, fechaSiga(ia.fechaLlegadaReal), D),
     el('ImporterCode', {}, sigaPartyCode(e.importador), D),
     el('ImporterName', {}, e.importador.nombre, D),
     el('ImporterNationality', {}, e.importador.paisDocumento || PAIS_RD, D),
-    el('BrokerCompanyCode', {}, e.agenteAduanal.codigo, D),
-    el('DeclarantCode', {}, e.agenteAduanal.codigo, D),
+    el('BrokerEmployeeCode', {}, '', D),
+    el('BrokerCompanyCode', {}, '', D),
+    el('DeclarantCode', {}, decl.codigo, D),
     el('DeclarantName', {}, e.agenteAduanal.nombre, D),
-    el('DeclarantNationality', {}, PAIS_RD, D),
+    el('DeclarantNationality', {}, decl.nacionalidad, D),
     el('RegimenCode', {}, e.regimenAduanero.codigo, D),
     el('AgreementCode', {}, e.regimenAduanero.acuerdo, D),
-    el('TotalFOB', {}, num(e.valores.valorFobTotal), D),
-    el('InsuranceValue', {}, num(e.valores.seguro), D),
-    el('FreightValue', {}, num(e.valores.flete), D),
-    el('OtherValue', {}, num(e.valores.otros), D),
-    el('TotalCIF', {}, num(e.valores.valorCifTotal), D),
+    el('TotalFOB', {}, money(e.valores.valorFobTotal), D),
+    el('InsuranceValue', {}, money(e.valores.seguro), D),
+    el('FreightValue', {}, money(e.valores.flete), D),
+    el('OtherValue', {}, money(e.valores.otros), D),
+    el('TotalCIF', {}, money(e.valores.valorCifTotal), D),
     el('TotalWeight', {}, num(e.pesoMercancia.pesoBrutoKg), D),
     el('NetWeight', {}, num(e.pesoMercancia.pesoNetoKg), D),
     el('Remark', {}, REMARK_ESTANDAR, D),
@@ -207,55 +246,20 @@ function expDeclaration(e: Expediente, now: Date): string {
   const d = e.declaracion;
   const ia = e.informacionAdicional;
   const D = 2;
-  const products = e.partidas.map((p) => el('ExpDeclarationProduct', {}, [
-    el('HSCode', {}, p.codigoPartida, D + 2),
-    el('ProductCode', {}, p.codigoProducto, D + 2),
-    el('ProductName', {}, p.descripcion, D + 2),
-    el('BrandCode', {}, '', D + 2),
-    el('BrandName', {}, p.marca || 'N/A', D + 2),
-    el('ModelCode', {}, '', D + 2),
-    el('ModelName', {}, p.modelo || 'N/A', D + 2),
-    el('ProductStatusCode', {}, p.estadoProducto, D + 2),
-    el('ProductYear', {}, p.anio, D + 2),
-    el('FOBValue', {}, num(p.valorFob), D + 2),
-    el('UnitCode', {}, p.unidad, D + 2),
-    el('Qty', {}, String(p.cantidad), D + 2),
-    el('Weight', {}, num(p.pesoKg), D + 2),
-    el('ProductSpecification', {}, p.especificacion, D + 2),
-    el('TempProductYN', {}, bool(p.temporal), D + 2),
-    el('CertificateOrignYN', {}, bool(p.certificadoOrigen), D + 2),
-    el('CertificateOriginNo', {}, p.certificadoOrigenNo, D + 2),
-    el('OriginCountry', {}, countryCode(p.paisOrigen) || PAIS_RD, D + 2),
-    el('OrganicYN', {}, bool(p.organico), D + 2),
-    el('GradeAlcohol', {}, num(p.gradoAlcohol), D + 2),
-    el('CustomerSalesPrice', {}, num(p.precioVentaMenor), D + 2),
-    el('ProductSerialNo', {}, p.serial, D + 2),
-    el('VehicleType', {}, p.vehiculo.tipo, D + 2),
-    el('VehicleChassis', {}, p.vehiculo.chasis, D + 2),
-    el('VehicleColor', {}, p.vehiculo.color, D + 2),
-    el('VehicleMotor', {}, p.vehiculo.motor, D + 2),
-    el('VehicleCC', {}, String(p.vehiculo.cc), D + 2),
-    el('ProductDescription', {}, p.descripcionAdicional || p.descripcion, D + 2),
-  ], D + 1));
+  const decl = declarante(e);
+  const products = e.partidas.map((p, i) => el('ExpDeclarationProduct', {}, producto(p, i, D + 2, false), D + 1));
+  const containers = e.contenedores.map((c) => el('ExpDeclarationContainer', {}, contenedor(c, D + 2), D + 1));
 
-  const containers = e.contenedores.map((c) => el('ExpDeclarationContainer', {}, [
-    el('ContainerType', {}, c.tipo, D + 2),
-    el('ContainerNo', {}, c.numero, D + 2),
-    el('SealNo1', {}, c.sello1, D + 2),
-    el('SealNo2', {}, c.sello2, D + 2),
-    el('ContainerPlate', {}, '', D + 2),
-  ], D + 1));
-
-  return el('ExpDeclaration', {}, [
-    el('DeclarationDate', {}, xsDateTime('', now), D),
+  return el('ExpDeclaration', { xmlns: '' }, [
+    el('DeclarationDate', {}, hoySiga(now), D),
     el('ClearanceType', {}, tipoDespachoCodigo(d.tipoDespacho), D),
     el('AreaCode', {}, d.administracionCodigo, D),
     el('FormNo', {}, d.idSecuencia, D),
     el('BLNo', {}, d.docEmbarque, D),
     el('BondedArea', {}, d.depositoDestino, D),
-    el('TransportCompany', {}, ia.transportistaCodigo || ia.transportistaNombre, D),
+    el('TransportCompany', {}, ia.transportistaCodigo, D),
     el('TransportCompanynationality', {}, ia.transporteNacionalidad, D),
-    el('TransportMethod', {}, ia.medioTransporte, D),
+    el('TransportMethod', {}, '', D),
     el('DeparturePort', {}, portCode(d.puertoEntrada), D),
     el('DestinationCountry', {}, d.paisProcedenciaCodigo, D),
     el('VoyageNo', {}, ia.noViaje, D),
@@ -265,16 +269,17 @@ function expDeclaration(e: Expediente, now: Date): string {
     el('BuyerCode', {}, sigaPartyCode(e.compradorExportacion), D),
     el('BuyerName', {}, e.compradorExportacion.nombre, D),
     el('BuyerNationality', {}, d.paisProcedenciaCodigo, D),
-    el('BrokerCompanyCode', {}, e.agenteAduanal.codigo, D),
-    el('DeclarantCode', {}, e.agenteAduanal.codigo, D),
+    el('BrokerCompanyCode', {}, '', D),
+    el('BrokerEmployeeCode', {}, '', D),
+    el('DeclarantCode', {}, decl.codigo, D),
     el('DeclarantName', {}, e.agenteAduanal.nombre, D),
-    el('DeclarantNationality', {}, PAIS_RD, D),
+    el('DeclarantNationality', {}, decl.nacionalidad, D),
     el('RegimenCode', {}, e.regimenAduanero.codigo, D),
-    el('TotalFOB', {}, num(e.valores.valorFobTotal), D),
-    el('InsuranceValue', {}, num(e.valores.seguro), D),
-    el('FreightValue', {}, num(e.valores.flete), D),
-    el('OtherValue', {}, num(e.valores.otros), D),
-    el('TotalCIF', {}, num(e.valores.valorCifTotal), D),
+    el('TotalFOB', {}, money(e.valores.valorFobTotal), D),
+    el('InsuranceValue', {}, money(e.valores.seguro), D),
+    el('FreightValue', {}, money(e.valores.flete), D),
+    el('OtherValue', {}, money(e.valores.otros), D),
+    el('TotalCIF', {}, money(e.valores.valorCifTotal), D),
     el('TotalWeight', {}, num(e.pesoMercancia.pesoBrutoKg), D),
     el('NetWeight', {}, num(e.pesoMercancia.pesoNetoKg), D),
     el('Remark', {}, REMARK_ESTANDAR, D),
@@ -283,16 +288,19 @@ function expDeclaration(e: Expediente, now: Date): string {
   ], 1);
 }
 
+/** The root as SIGA's own exports write it: XML Schema namespaces declared, target as default. */
+const raiz = (ns: string) => ({ 'xmlns:xsd': 'http://www.w3.org/2001/XMLSchema', 'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance', xmlns: ns });
+
 /** SIGA ImportDUA document for the given import expedientes. */
 export function buildSigaImportXml(expedientes: Expediente[], now = new Date()): string {
   const decls = expedientes.map((e) => impDeclaration(e, now));
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${el('ImportDUA', { xmlns: SIGA_NS_IMPORT }, decls, 0)}`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${el('ImportDUA', raiz(SIGA_NS_IMPORT), decls, 0)}`;
 }
 
 /** SIGA ExportDUA document for the given export expedientes. */
 export function buildSigaExportXml(expedientes: Expediente[], now = new Date()): string {
   const decls = expedientes.map((e) => expDeclaration(e, now));
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${el('ExportDUA', { xmlns: SIGA_NS_EXPORT }, decls, 0)}`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${el('ExportDUA', raiz(SIGA_NS_EXPORT), decls, 0)}`;
 }
 
 /**

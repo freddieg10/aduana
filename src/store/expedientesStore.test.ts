@@ -48,7 +48,25 @@ describe('migrateExpediente', () => {
     const out = migrateExpediente(legacy);
     expect(out.importador.codigo).toBe('101-00001-1');
     expect(out.consignatario.codigo).toBe('101-00001-1');
-    expect(out.agenteAduanal.codigo).toBe('1');
+  });
+
+  it('v9: gives the brokerage agent its RNC, which SIGA needs as the declarant code', () => {
+    const out = migrateExpediente({
+      id: '7', reference: 'R7', observaciones: [], digitador: '', gestor: '',
+      agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+    });
+    expect(out.agenteAduanal).toEqual({ codigo: '130339198', nombre: 'ARMESSAG, SRL', tipoDocumento: 'RNC', paisDocumento: '214' });
+    const otro = migrateExpediente({ id: '8', reference: 'R8', observaciones: [], digitador: '', gestor: '', agenteAduanal: { codigo: '1', nombre: 'OTRA AGENCIA' } });
+    expect(otro.agenteAduanal.codigo).toBe('1');   // not ours: left for the user to fix
+  });
+
+  it('v9: renglón units become SIGA unit codes', () => {
+    const out = migrateExpediente({
+      id: '9', reference: 'R9', observaciones: [], digitador: '', gestor: '',
+      partidas: [{ id: 'a', unidad: 'KILOGRAMOS' }, { id: 'b', unidad: 'UNIDADES' }, { id: 'c', unidad: 'LITROS' }, { id: 'd', unidad: '10' }, { id: 'e', unidad: 'DOCENAS' }],
+    });
+    // DOCENAS has no SIGA code: it stays visible rather than being guessed.
+    expect(out.partidas.map((p) => p.unidad)).toEqual(['3', '1', '10', '10', 'DOCENAS']);
   });
 
   it('leaves an unknown importer code alone', () => {

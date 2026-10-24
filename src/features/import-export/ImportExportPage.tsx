@@ -10,6 +10,7 @@ import { useExpedientesStore } from '../../store/expedientesStore';
 import type { Expediente } from '../../types';
 import { parseWorkbook, rowsToExpedientes, readFileAsArrayBuffer, type ParsedWorkbook } from '../../utils/excel';
 import { buildFullXml, buildSigaXmlFiles, downloadTextFile } from '../../utils/xml';
+import { validarSiga, type ProblemaSiga } from '../../utils/sigaValidacion';
 
 const PREVIEW_ROWS = 20;
 
@@ -81,6 +82,20 @@ export default function ImportExportPage() {
       downloadTextFile(file.xml, name);
     }
     flashExport(t('importExport.exportSigaSuccess'));
+  };
+
+  /* Checked live on the selection, so the digitador sees why SIGA would refuse a file before downloading it. */
+  const problemasSiga = selectedExpedientes()
+    .map((e) => ({ e, problemas: validarSiga(e) }))
+    .filter((x) => x.problemas.length > 0);
+  const textoProblema = (p: ProblemaSiga) => {
+    switch (p.tipo) {
+      case 'documento': return t('importExport.siga_documento', { parte: t(`importExport.siga_parte_${p.parte}`), valor: p.valor });
+      case 'partida': return t('importExport.siga_partida', { renglon: p.renglon, valor: p.valor });
+      case 'unidad': return t('importExport.siga_unidad', { renglon: p.renglon, valor: p.valor });
+      case 'cantidad': return t('importExport.siga_cantidad', { renglon: p.renglon });
+      default: return t(`importExport.siga_${p.tipo}`);
+    }
   };
 
   const flashExport = (msg: string) => {
@@ -203,6 +218,19 @@ export default function ImportExportPage() {
             initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
             sx={{ mb: 2 }}
           />
+
+          {problemasSiga.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {t('importExport.sigaProblemas')}
+              <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                {problemasSiga.map(({ e, problemas }) => (
+                  <li key={e.id}>
+                    <strong>{e.declaracion.noDeclaracion || e.reference}</strong>: {problemas.map(textoProblema).join('; ')}
+                  </li>
+                ))}
+              </ul>
+            </Alert>
+          )}
 
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <Button variant="contained" startIcon={<Download />} onClick={handleExportFull} disabled={selectedIds.ids.size === 0}>

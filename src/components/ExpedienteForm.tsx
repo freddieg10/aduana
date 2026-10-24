@@ -1,28 +1,27 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert, Autocomplete, Box, Button, Card, CardContent, Checkbox, Divider, Grid, MenuItem,
+  Alert, Autocomplete, Box, Button, Card, CardContent, Divider, Grid, MenuItem,
   Paper, Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Typography, IconButton,
 } from '@mui/material';
-import { Add, ContentCopy, Delete, Upload, Visibility } from '@mui/icons-material';
+import { Add, Delete } from '@mui/icons-material';
 import { ExpedienteStatus } from '../types';
-import type { ExpedienteFormData, EntidadAduanal, Partida, TipoCarga, Suplidor, Cliente, SuplidorMaestro, TipoDocumento } from '../types';
+import type { ExpedienteFormData, EntidadAduanal, TipoCarga, Suplidor, Cliente, SuplidorMaestro, TipoDocumento } from '../types';
 import {
-  ACUERDOS, ADMINISTRACIONES, TIPOS_DESPACHO_LABELS, TIPOS_DOCUMENTO, UNIDADES,
+  ACUERDOS, ADMINISTRACIONES, TIPOS_DESPACHO_LABELS, TIPOS_DOCUMENTO,
   findAdministracion, findRegimen, regimenesFor,
 } from '../data/catalogos';
 import { useSettingsStore } from '../store/settingsStore';
 import { clienteToEntidad, TIPO_DOCUMENTO_DEFAULT } from '../utils/documento';
-import { emptyPartida, tieneDetalle, withDerived } from '../utils/partida';
 import { validarVuce, validarNoTemporal } from '../utils/vuce';
 import { MEDIOS_TRANSPORTE } from '../data/catalogos';
-import PartidaDetailDialog from './PartidaDetailDialog';
+import RenglonesGrid from './RenglonesGrid';
+import NumberField from './NumberField';
 import PreliquidacionTab from './PreliquidacionTab';
 import { COUNTRIES, findCountryByCode } from '../data/countries';
 import { PUERTOS_RD } from '../data/puertos';
 import { useRelacionadosStore } from '../store/relacionadosStore';
-import { parsePartidas, readFileAsArrayBuffer } from '../utils/excel';
 
 export interface ExtraTab {
   label: string;
@@ -32,7 +31,7 @@ export interface ExtraTab {
 interface Props {
   value: ExpedienteFormData;
   onChange: (next: ExpedienteFormData) => void;
-  /** Tabs appended after the built-in ones (the detail page adds the checklist here). */
+  /** Tabs appended after Preliquidación (the detail page adds the checklist here). */
   extraTabs?: ExtraTab[];
 }
 
@@ -58,12 +57,8 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
   const depositos = useRelacionadosStore((s) => s.depositos);
   const digitadores = useSettingsStore((s) => s.digitadores);
   const gestores = useSettingsStore((s) => s.gestores);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [tab, setTab] = useState(0);
-  const [importError, setImportError] = useState('');
-  const [importWarning, setImportWarning] = useState('');
-  const [detalleIdx, setDetalleIdx] = useState<number | null>(null);
   const [consignatarioEdited, setConsignatarioEdited] = useState(
     value.importador.codigo !== value.consignatario.codigo || value.importador.nombre !== value.consignatario.nombre,
   );
@@ -82,28 +77,6 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
 
   const handleRegimenChange = (codigo: string) =>
     patch({ regimenAduanero: { ...value.regimenAduanero, codigo, nombre: findRegimen(codigo)?.nombre ?? '' } });
-
-  const handleImportPartidas = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setImportError('');
-    setImportWarning('');
-    try {
-      const buf = await readFileAsArrayBuffer(file);
-      const { partidas, unmappedHeaders } = parsePartidas(buf);
-      patch({ partidas: [...value.partidas, ...partidas] });
-      if (unmappedHeaders.length) setImportWarning(t('detail.unmappedColumns', { cols: unmappedHeaders.join(', ') }));
-    } catch {
-      setImportError(t('importExport.parseError'));
-    }
-  };
-
-  const clonePartida = (i: number) => {
-    const next = [...value.partidas];
-    next.splice(i + 1, 0, { ...value.partidas[i], id: crypto.randomUUID() });
-    patch({ partidas: next });
-  };
 
   const ia = value.informacionAdicional;
   const setIa = (p: Partial<ExpedienteFormData['informacionAdicional']>) => patch({ informacionAdicional: { ...ia, ...p } });
@@ -131,10 +104,8 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
           <Tab label={t('detail.tabDeclaracion')} />
-          <Tab label={t('detail.tabPartes')} />
+          <Tab label={t('detail.tabRenglonesValores')} />
           <Tab label={t('detail.tabDocsCont')} />
-          <Tab label={t('detail.tabValores')} />
-          <Tab label={t('detail.tabPartidas')} />
           <Tab label={t('detail.tabInfoAdicional')} />
           <Tab label={t('detail.tabVuce')} />
           <Tab label={t('preliq.titulo')} />
@@ -142,8 +113,9 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
         </Tabs>
       </Box>
 
-      {/* TAB 0 — DECLARACIÓN */}
+            {/* TAB 0 — DECLARACIÓN (declaración + partes) */}
       {tab === 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Card><CardContent>
           <SectionTitle>{t('detail.declaracion')}</SectionTitle>
           <Grid container spacing={2}>
@@ -230,10 +202,7 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
             </Grid>
           </Grid>
         </CardContent></Card>
-      )}
-
-      {/* TAB 1 — PARTES */}
-      {tab === 1 && (
+      
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Card><CardContent>
             <SectionTitle>{t('detail.importador')}</SectionTitle>
@@ -274,8 +243,24 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
           <Card><CardContent>
             <SectionTitle>{t('detail.agenteAduanal')}</SectionTitle>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.codigo')} value={value.agenteAduanal.codigo} onChange={(e) => patch({ agenteAduanal: { ...value.agenteAduanal, codigo: e.target.value } })} /></Grid>
-              <Grid size={{ xs: 12, sm: 8 }}><TextField fullWidth label={t('detail.nombre')} value={value.agenteAduanal.nombre} onChange={(e) => patch({ agenteAduanal: { ...value.agenteAduanal, nombre: e.target.value } })} /></Grid>
+              <Grid size={{ xs: 6, sm: 2 }}>
+                <TextField
+                  select fullWidth label={t('detail.tipoDocumento')}
+                  value={value.agenteAduanal.tipoDocumento ?? 'RNC'}
+                  onChange={(e) => patch({ agenteAduanal: { ...value.agenteAduanal, tipoDocumento: e.target.value as TipoDocumento } })}
+                >
+                  {TIPOS_DOCUMENTO.map((x) => <MenuItem key={x} value={x}>{x}</MenuItem>)}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 4 }}>
+                <TextField
+                  fullWidth required label={t('detail.documento')}
+                  value={value.agenteAduanal.codigo}
+                  onChange={(e) => patch({ agenteAduanal: { ...value.agenteAduanal, codigo: e.target.value } })}
+                  helperText={t('detail.agenteDocumentoHint')}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('detail.nombre')} value={value.agenteAduanal.nombre} onChange={(e) => patch({ agenteAduanal: { ...value.agenteAduanal, nombre: e.target.value } })} /></Grid>
             </Grid>
           </CardContent></Card>
 
@@ -341,6 +326,61 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
             <Button size="small" startIcon={<Add />} onClick={() => patch({ suplidores: [...value.suplidores, { codigo: '', nombre: '', nacionalidad: '' }] })}>{t('detail.addSuplidor')}</Button>
           </CardContent></Card>
         </Box>
+      
+        </Box>
+      )}
+
+      {/* TAB 1 — RENGLONES & VALORES */}
+      {tab === 1 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Card><CardContent>
+            <RenglonesGrid partidas={value.partidas} onChange={(partidas) => patch({ partidas })} />
+          </CardContent></Card>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Card><CardContent>
+            <SectionTitle>{t('detail.valores')}</SectionTitle>
+            <Grid container spacing={2}>
+              {(['tasaCambio', 'valorFobTotal', 'seguro', 'flete', 'otros', 'valorCifTotal'] as const).map((k) => (
+                <Grid size={{ xs: 12, sm: 4 }} key={k}>
+                  <NumberField fullWidth label={t(`detail.${k}`)} value={value.valores[k]} onChange={(n) => patch({ valores: { ...value.valores, [k]: n } })} />
+                </Grid>
+              ))}
+            </Grid>
+          </CardContent></Card>
+
+          <Card><CardContent>
+            <SectionTitle>{t('detail.regimenAduanero')}</SectionTitle>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField select fullWidth label={t('detail.regimenAduanero')} value={value.regimenAduanero.codigo} onChange={(e) => handleRegimenChange(e.target.value)}>
+                  {regimenOptions.map((r) => <MenuItem key={r.codigo} value={r.codigo}>{r.codigo} — {r.nombre}</MenuItem>)}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  select fullWidth label={t('detail.acuerdo')}
+                  value={value.regimenAduanero.acuerdo}
+                  onChange={(e) => patch({ regimenAduanero: { ...value.regimenAduanero, acuerdo: e.target.value } })}
+                  helperText={ACUERDOS.find((a) => a.codigo === value.regimenAduanero.acuerdo)?.descripcion ?? ' '}
+                >
+                  <MenuItem value="">{t('detail.sinAcuerdo')}</MenuItem>
+                  {ACUERDOS.map((a) => <MenuItem key={a.codigo} value={a.codigo}>{a.codigo} — {a.nombre}</MenuItem>)}
+                </TextField>
+              </Grid>
+            </Grid>
+          </CardContent></Card>
+
+          <Card><CardContent>
+            <SectionTitle>{t('detail.pesoMercancia')}</SectionTitle>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.codigoMercancia')} value={value.pesoMercancia.codigoMercancia} onChange={(e) => patch({ pesoMercancia: { ...value.pesoMercancia, codigoMercancia: e.target.value } })} /></Grid>
+              <Grid size={{ xs: 12, sm: 4 }}><NumberField fullWidth label={t('detail.pesoBrutoKg')} value={value.pesoMercancia.pesoBrutoKg} onChange={(n) => patch({ pesoMercancia: { ...value.pesoMercancia, pesoBrutoKg: n } })} /></Grid>
+              <Grid size={{ xs: 12, sm: 4 }}><NumberField fullWidth label={t('detail.pesoNetoKg')} value={value.pesoMercancia.pesoNetoKg} onChange={(n) => patch({ pesoMercancia: { ...value.pesoMercancia, pesoNetoKg: n } })} /></Grid>
+            </Grid>
+          </CardContent></Card>
+        </Box>
+      
+        </Box>
       )}
 
       {/* TAB 2 — DOCUMENTOS & CONTENEDORES */}
@@ -365,7 +405,7 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
                       <TableCell><TextField size="small" variant="standard" value={doc.numeroFactura} onChange={(e) => patch({ documentos: updateAt(value.documentos, i, { numeroFactura: e.target.value }) })} /></TableCell>
                       <TableCell><TextField size="small" variant="standard" type="date" value={doc.fechaFactura} onChange={(e) => patch({ documentos: updateAt(value.documentos, i, { fechaFactura: e.target.value }) })} /></TableCell>
                       <TableCell><TextField size="small" variant="standard" value={doc.codigoSuplidor} onChange={(e) => patch({ documentos: updateAt(value.documentos, i, { codigoSuplidor: e.target.value }) })} /></TableCell>
-                      <TableCell align="right"><TextField size="small" variant="standard" type="number" value={doc.valorFactura} onChange={(e) => patch({ documentos: updateAt(value.documentos, i, { valorFactura: Number(e.target.value) }) })} sx={{ width: 120 }} /></TableCell>
+                      <TableCell align="right"><NumberField size="small" variant="standard" value={doc.valorFactura} onChange={(n) => patch({ documentos: updateAt(value.documentos, i, { valorFactura: n }) })} sx={{ width: 120 }} /></TableCell>
                       <TableCell><IconButton size="small" color="error" onClick={() => patch({ documentos: value.documentos.filter((_, idx) => idx !== i) })}><Delete fontSize="small" /></IconButton></TableCell>
                     </TableRow>
                   ))}
@@ -412,139 +452,11 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
             <Button size="small" startIcon={<Add />} sx={{ mt: 1 }} onClick={() => patch({ contenedores: [...value.contenedores, { id: crypto.randomUUID(), tipo: '', numero: '', sello1: '', sello2: '' }] })}>{t('detail.addContenedor')}</Button>
           </CardContent></Card>
         </Box>
+      
       )}
 
-      {/* TAB 3 — VALORES & RÉGIMEN */}
+      {/* TAB 3 — INFORMACIÓN ADICIONAL (completes the hoja de registro and the DUA header) */}
       {tab === 3 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <Card><CardContent>
-            <SectionTitle>{t('detail.valores')}</SectionTitle>
-            <Grid container spacing={2}>
-              {(['tasaCambio', 'valorFobTotal', 'seguro', 'flete', 'otros', 'valorCifTotal'] as const).map((k) => (
-                <Grid size={{ xs: 12, sm: 4 }} key={k}>
-                  <TextField fullWidth type="number" label={t(`detail.${k}`)} value={value.valores[k]} onChange={(e) => patch({ valores: { ...value.valores, [k]: Number(e.target.value) } })} />
-                </Grid>
-              ))}
-            </Grid>
-          </CardContent></Card>
-
-          <Card><CardContent>
-            <SectionTitle>{t('detail.regimenAduanero')}</SectionTitle>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField select fullWidth label={t('detail.regimenAduanero')} value={value.regimenAduanero.codigo} onChange={(e) => handleRegimenChange(e.target.value)}>
-                  {regimenOptions.map((r) => <MenuItem key={r.codigo} value={r.codigo}>{r.codigo} — {r.nombre}</MenuItem>)}
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  select fullWidth label={t('detail.acuerdo')}
-                  value={value.regimenAduanero.acuerdo}
-                  onChange={(e) => patch({ regimenAduanero: { ...value.regimenAduanero, acuerdo: e.target.value } })}
-                  helperText={ACUERDOS.find((a) => a.codigo === value.regimenAduanero.acuerdo)?.descripcion ?? ' '}
-                >
-                  <MenuItem value="">{t('detail.sinAcuerdo')}</MenuItem>
-                  {ACUERDOS.map((a) => <MenuItem key={a.codigo} value={a.codigo}>{a.codigo} — {a.nombre}</MenuItem>)}
-                </TextField>
-              </Grid>
-            </Grid>
-          </CardContent></Card>
-
-          <Card><CardContent>
-            <SectionTitle>{t('detail.pesoMercancia')}</SectionTitle>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('detail.codigoMercancia')} value={value.pesoMercancia.codigoMercancia} onChange={(e) => patch({ pesoMercancia: { ...value.pesoMercancia, codigoMercancia: e.target.value } })} /></Grid>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth type="number" label={t('detail.pesoBrutoKg')} value={value.pesoMercancia.pesoBrutoKg} onChange={(e) => patch({ pesoMercancia: { ...value.pesoMercancia, pesoBrutoKg: Number(e.target.value) } })} /></Grid>
-              <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth type="number" label={t('detail.pesoNetoKg')} value={value.pesoMercancia.pesoNetoKg} onChange={(e) => patch({ pesoMercancia: { ...value.pesoMercancia, pesoNetoKg: Number(e.target.value) } })} /></Grid>
-            </Grid>
-          </CardContent></Card>
-        </Box>
-      )}
-
-      {/* TAB 4 — RENGLONES */}
-      {tab === 4 && (
-        <Card><CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <SectionTitle>{t('detail.renglones')} ({value.partidas.length})</SectionTitle>
-            <Box sx={{ flexGrow: 1 }} />
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={handleImportPartidas} />
-            <Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => fileRef.current?.click()}>{t('detail.importRenglonesXlsx')}</Button>
-          </Box>
-          {importError && <Alert severity="error" sx={{ mb: 2 }}>{importError}</Alert>}
-          {importWarning && <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setImportWarning('')}>{importWarning}</Alert>}
-          <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('detail.codigoPartida')}</TableCell>
-                  <TableCell>{t('detail.codigoProducto')}</TableCell>
-                  <TableCell>{t('detail.descripcion')}</TableCell>
-                  <TableCell align="center">{t('detail.organico')}</TableCell>
-                  <TableCell align="right">{t('detail.cantidad')}</TableCell>
-                  <TableCell>{t('detail.unidad')}</TableCell>
-                  <TableCell>{t('detail.paisOrigen')}</TableCell>
-                  <TableCell align="right">{t('detail.valorFob')}</TableCell>
-                  <TableCell align="right">{t('detail.unitario')}</TableCell>
-                  <TableCell>{t('detail.facturaDva')}</TableCell>
-                  <TableCell width={100} />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {value.partidas.map((p, i) => {
-                  const up = (patchP: Partial<Partida>) =>
-                    patch({ partidas: value.partidas.map((x, idx) => (idx === i ? withDerived({ ...x, ...patchP }) : x)) });
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell><TextField size="small" variant="standard" value={p.codigoPartida} onChange={(e) => up({ codigoPartida: e.target.value })} sx={{ width: 110 }} /></TableCell>
-                      <TableCell><TextField size="small" variant="standard" value={p.codigoProducto} onChange={(e) => up({ codigoProducto: e.target.value })} sx={{ width: 110 }} /></TableCell>
-                      <TableCell><TextField size="small" variant="standard" value={p.descripcion} onChange={(e) => up({ descripcion: e.target.value })} sx={{ minWidth: 180 }} /></TableCell>
-                      <TableCell align="center"><Checkbox size="small" checked={p.organico} onChange={() => up({ organico: !p.organico })} /></TableCell>
-                      <TableCell align="right"><TextField size="small" variant="standard" type="number" value={p.cantidad} onChange={(e) => up({ cantidad: Number(e.target.value) })} sx={{ width: 90 }} /></TableCell>
-                      <TableCell>
-                        <TextField select size="small" variant="standard" value={p.unidad} onChange={(e) => up({ unidad: e.target.value })} sx={{ width: 120 }}>
-                          {withCurrent(UNIDADES, p.unidad).map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
-                        </TextField>
-                      </TableCell>
-                      <TableCell><TextField size="small" variant="standard" value={p.paisOrigen} onChange={(e) => up({ paisOrigen: e.target.value })} sx={{ width: 110 }} /></TableCell>
-                      <TableCell align="right"><TextField size="small" variant="standard" type="number" value={p.valorFob} onChange={(e) => up({ valorFob: Number(e.target.value) })} sx={{ width: 100 }} /></TableCell>
-                      <TableCell align="right" title={t('detail.unitarioAuto')}>
-                        <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary' }}>
-                          {p.unitario.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
-                        </Typography>
-                      </TableCell>
-                      <TableCell><TextField size="small" variant="standard" value={p.facturaDva} onChange={(e) => up({ facturaDva: e.target.value })} sx={{ width: 90 }} /></TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <IconButton
-                            size="small"
-                            color={tieneDetalle(p) ? 'primary' : 'default'}
-                            onClick={() => setDetalleIdx(i)}
-                            title={t('detail.detalleRenglon')}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => clonePartida(i)} title={t('detail.cloneRenglon')}><ContentCopy fontSize="small" /></IconButton>
-                          <IconButton size="small" color="error" onClick={() => patch({ partidas: value.partidas.filter((_, idx) => idx !== i) })}><Delete fontSize="small" /></IconButton>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Button size="small" startIcon={<Add />} onClick={() => patch({ partidas: [...value.partidas, emptyPartida()] })}>{t('detail.addRenglon')}</Button>
-            <Box sx={{ flexGrow: 1 }} />
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              FOB Total: ${value.partidas.reduce((s, p) => s + p.valorFob, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </Typography>
-          </Box>
-        </CardContent></Card>
-      )}
-
-      {/* TAB 5 — INFORMACIÓN ADICIONAL (completes the hoja de registro and the DUA header) */}
-      {tab === 5 && (
         <Card><CardContent>
           <SectionTitle>{t('detail.tabInfoAdicional')}</SectionTitle>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>{t('detail.infoAdicionalHint')}</Typography>
@@ -576,10 +488,11 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
             <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={3} label={t('detail.notasHojaRegistro')} value={ia.notasHojaRegistro} onChange={(e) => setIa({ notasHojaRegistro: e.target.value })} /></Grid>
           </Grid>
         </CardContent></Card>
+      
       )}
 
-      {/* TAB 6 — VUCE */}
-      {tab === 6 && (
+      {/* TAB 4 — VUCE */}
+      {tab === 4 && (
         <Card><CardContent>
           <SectionTitle>{t('detail.tabVuce')}</SectionTitle>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>{t('detail.vuceHint')}</Typography>
@@ -631,24 +544,14 @@ export default function ExpedienteForm({ value, onChange, extraTabs = [] }: Prop
             </TableContainer>
           )}
         </CardContent></Card>
+      
       )}
 
-      {/* TAB 7 — PRELIQUIDACIÓN (mounted only while open: it lazy-loads the arancel) */}
-      {tab === 7 && <PreliquidacionTab value={value} onChange={onChange} />}
+      {/* TAB 5 — PRELIQUIDACIÓN (mounted only while open: it lazy-loads the arancel) */}
+      {tab === 5 && <PreliquidacionTab value={value} onChange={onChange} />}
 
-      {extraTabs.map((x, i) => (tab === 8 + i ? <Box key={x.label}>{x.content}</Box> : null))}
+      {extraTabs.map((x, i) => (tab === 6 + i ? <Box key={x.label}>{x.content}</Box> : null))}
 
-      {detalleIdx !== null && value.partidas[detalleIdx] && (
-        <PartidaDetailDialog
-          key={value.partidas[detalleIdx].id}
-          partida={value.partidas[detalleIdx]}
-          onClose={() => setDetalleIdx(null)}
-          onSave={(p) => {
-            patch({ partidas: value.partidas.map((x, idx) => (idx === detalleIdx ? withDerived(p) : x)) });
-            setDetalleIdx(null);
-          }}
-        />
-      )}
     </Box>
   );
 }

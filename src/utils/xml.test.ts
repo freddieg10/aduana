@@ -5,6 +5,7 @@ import { ExpedienteStatus } from '../types';
 import type { Expediente } from '../types';
 import { emptyPartida, withDerived } from './partida';
 import { emptyInformacionAdicional } from '../store/expedientesStore';
+import { AGENTE_ADUANAL_DEFAULT } from '../data/catalogos';
 
 const NOW = new Date('2026-09-03T12:00:00Z');
 
@@ -19,7 +20,7 @@ const sample: Expediente = {
     noDeclaracion: 'DEC-1', docEmbarque: 'BL-1', depositoDestino: '', puertoEntrada: 'Rio Haina', paisProcedenciaCodigo: '724', paisProcedenciaNombre: 'ESPAÑA', facturaComercialNo: 'F-1',
   },
   importador: { codigo: '101-00001-1', nombre: 'BRAVO S A', tipoDocumento: 'RNC', paisDocumento: '214' },
-  agenteAduanal: { codigo: '1', nombre: 'ARMESSAG, SRL' },
+  agenteAduanal: { ...AGENTE_ADUANAL_DEFAULT },
   consignatario: { codigo: '101-00001-1', nombre: 'BRAVO S A', tipoDocumento: 'RNC', paisDocumento: '214' },
   compradorExportacion: { codigo: '0', nombre: '' },
   suplidores: [{ codigo: 'S1', nombre: 'Sup', nacionalidad: 'ESPAÑA' }],
@@ -87,12 +88,13 @@ describe('buildSigaImportXml (ImportDUA.xsd)', () => {
   const tags = [...xml.matchAll(/<([A-Za-z]+)[ >/]/g)].map((m) => m[1]);
 
   it('uses the DGA ImportDUA root and namespace', () => {
-    expect(xml).toContain(`<ImportDUA xmlns="${SIGA_NS_IMPORT}">`);
-    expect(xml.match(/<ImpDeclaration>/g)).toHaveLength(1);
+    expect(xml).toContain(`<ImportDUA xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="${SIGA_NS_IMPORT}">`);
+    // The XSD has no elementFormDefault: the declaration and everything in it are unqualified.
+    expect(xml.match(/<ImpDeclaration xmlns="">/g)).toHaveLength(1);
   });
 
   it('emits the header elements in schema order', () => {
-    const header = ['DeclarationDate', 'ClearanceType', 'AreaCode', 'FormNo', 'BLNo', 'ConsigneeCode', 'ConsigneeName', 'ConsigneeNationality', 'CommercialInvoiceNo', 'DestinationLocationCode', 'EntryPort', 'DepartureCountryCode', 'TransportCompanyCode', 'TransportNationality', 'TransportMethod', 'EntryPlanDate', 'EntryDate', 'ImporterCode', 'ImporterName', 'ImporterNationality', 'BrokerCompanyCode', 'DeclarantCode', 'DeclarantName', 'DeclarantNationality', 'RegimenCode', 'AgreementCode', 'TotalFOB', 'InsuranceValue', 'FreightValue', 'OtherValue', 'TotalCIF', 'TotalWeight', 'NetWeight', 'Remark', 'ImpDeclarationSupplier'];
+    const header = ['DeclarationDate', 'ClearanceType', 'AreaCode', 'FormNo', 'BLNo', 'ConsigneeCode', 'ConsigneeName', 'ConsigneeNationality', 'CommercialInvoiceNo', 'DestinationLocationCode', 'EntryPort', 'DepartureCountryCode', 'TransportCompanyCode', 'TransportNationality', 'TransportMethod', 'EntryPlanDate', 'EntryDate', 'ImporterCode', 'ImporterName', 'ImporterNationality', 'BrokerEmployeeCode', 'BrokerCompanyCode', 'DeclarantCode', 'DeclarantName', 'DeclarantNationality', 'RegimenCode', 'AgreementCode', 'TotalFOB', 'InsuranceValue', 'FreightValue', 'OtherValue', 'TotalCIF', 'TotalWeight', 'NetWeight', 'Remark', 'ImpDeclarationSupplier'];
     const idx = header.map((h) => tags.indexOf(h));
     expect(idx.every((i) => i >= 0)).toBe(true);
     expect([...idx].sort((a, b) => a - b)).toEqual(idx);
@@ -108,9 +110,9 @@ describe('buildSigaImportXml (ImportDUA.xsd)', () => {
     expect(xml).toContain('<ImporterCode>RNC214101000011</ImporterCode>');   // [RNC][country][number] per the XSD
     expect(xml).toContain('<ConsigneeCode>RNC214101000011</ConsigneeCode>');
     expect(xml).toContain('<ImporterNationality>214</ImporterNationality>');
-    expect(xml).toContain('<TotalCIF>103.00</TotalCIF>');
+    expect(xml).toContain('<TotalCIF>103.0000</TotalCIF>');   // money: four decimals
     expect(xml).toContain('<ForeignSupplierNationality>724</ForeignSupplierNationality>');
-    expect(xml).toContain('<HSCode>4818.30.00</HSCode>');
+    expect(xml).toContain('<HSCode>48183000</HSCode>');   // no dots
     expect(xml).toContain('<OriginCountry>724</OriginCountry>');
     expect(xml).toContain('<OrganicYN>false</OrganicYN>');
     expect(xml).toContain('<ContainerNo>CONT-1</ContainerNo>');
@@ -131,9 +133,11 @@ describe('buildSigaImportXml (ImportDUA.xsd)', () => {
   });
 
   it('fills the transport block from informacion adicional', () => {
-    expect(xml).toContain('<TransportCompanyCode>MAERSK LINE</TransportCompanyCode>');
+    // Only a carrier code goes in a code field; the fixture has just the carrier's name.
+    expect(xml).toContain('<TransportCompanyCode></TransportCompanyCode>');
     expect(xml).toContain('<TransportNationality>208</TransportNationality>');
-    expect(xml).toContain('<TransportMethod>MARITIMO</TransportMethod>');
+    // SIGA's transport-method codes are unknown, and the app's labels are not codes.
+    expect(xml).toContain('<TransportMethod></TransportMethod>');
     expect(xml).toContain('<ManifestNo>MAN-1</ManifestNo>');
     expect(xml).toContain('<CargoControlNo>CC-1</CargoControlNo>');
     expect(xml).toContain('<EntryDate>2026-02-27T00:00:00</EntryDate>');   // actual arrival, not the ETA
@@ -141,6 +145,35 @@ describe('buildSigaImportXml (ImportDUA.xsd)', () => {
 
   it('still emits schema-required elements the app does not track, empty', () => {
     expect(xml).toContain('<AgreementCode></AgreementCode>');
+    expect(xml).toContain('<BrokerEmployeeCode></BrokerEmployeeCode>');
+    expect(xml).toContain('<BrokerCompanyCode></BrokerCompanyCode>');
+  });
+
+  it('sends the declarant as a full party code: a short one crashes SIGA\'s import', () => {
+    expect(xml).toContain('<DeclarantCode>RNC214130339198</DeclarantCode>');
+    expect(xml).toContain('<DeclarantNationality>214</DeclarantNationality>');
+  });
+
+  it('declares the unit price as FOBValue and the SIGA unit code', () => {
+    expect(xml).toContain('<FOBValue>10.0000</FOBValue>');   // US$ 100 for 10 kg
+    expect(xml).toContain('<Qty>10.0000</Qty>');
+    expect(xml).toContain('<UnitCode>3</UnitCode>');         // KILOGRAMOS
+  });
+
+  it('fills unknown codes and dates the way SIGA does', () => {
+    expect(xml).toContain('<BrandCode>0</BrandCode>');
+    expect(xml).toContain('<ModelName>NA</ModelName>');
+    expect(xml).toContain('<ProductYear>0</ProductYear>');
+    const sinFechas = buildSigaImportXml([{ ...sample, declaracion: { ...sample.declaracion, eta: '' }, informacionAdicional: { ...sample.informacionAdicional, fechaLlegadaReal: '' } }], NOW);
+    expect(sinFechas).toContain('<EntryPlanDate>1900-01-01T12:00:00</EntryPlanDate>');
+    expect(sinFechas).toContain('<EntryDate>1900-01-01T12:00:00</EntryDate>');
+  });
+
+  it('declares a product with no registered code as temporary, coded by its line number', () => {
+    const sinCodigo = buildSigaImportXml([{ ...sample, partidas: [{ ...sample.partidas[0], codigoProducto: '' }] }], NOW);
+    expect(sinCodigo).toContain('<ProductCode>1</ProductCode>');
+    expect(sinCodigo).toContain('<TempProductYN>true</TempProductYN>');
+    expect(xml).toContain('<TempProductYN>false</TempProductYN>');
   });
 
   it('does not leak app-only concepts', () => {
@@ -153,7 +186,9 @@ describe('buildSigaExportXml (ExportDUA.xsd)', () => {
   const xml = buildSigaExportXml([exportSample], NOW);
 
   it('uses the ExportDUA root and maps exporter/buyer', () => {
-    expect(xml).toContain(`<ExportDUA xmlns="${SIGA_NS_EXPORT}">`);
+    expect(xml).toContain(`xmlns="${SIGA_NS_EXPORT}">`);
+    expect(xml).toContain('<ExpDeclaration xmlns="">');
+    expect(xml).toContain('<DeclarantCode>RNC214130339198</DeclarantCode>');
     expect(xml).toContain('<ExporterCode>RNC214101000011</ExporterCode>');
     expect(xml).toContain('<BuyerCode>PAS724X1234567</BuyerCode>');   // foreign buyer identified by passport
     expect(xml).toContain('<BuyerName>Buyer Inc</BuyerName>');
@@ -213,12 +248,22 @@ describe('SIGA element order matches the XSD sequence', () => {
     /<\/[A-Za-z][A-Za-z0-9_]*>/,
   );
 
+  /*
+   * Elements SIGA accepts that the published XSD does not list, appended where SIGA's own DUA
+   * (docs/siga-muestras) puts them: each product repeats its description in a Remark.
+   */
+  const FUERA_DEL_XSD: Record<string, string[]> = {
+    ImpDeclarationProduct: ['Remark'],
+    ExpDeclarationProduct: ['Remark'],
+  };
+
   /** Every emitted child must exist in the schema block and follow the schema order. */
   function desorden(xml: Map<string, string[]>, xsd: Map<string, string[]>): string[] {
     const fallas: string[] = [];
     for (const [padre, hijos] of xml) {
       if (hijos.length === 0) continue;
-      const esquema = xsd.get(padre);
+      const base = xsd.get(padre);
+      const esquema = base && [...base, ...(FUERA_DEL_XSD[padre] ?? [])];
       if (!esquema) continue;                      // root wrapper, not declared as an element
       let i = -1;
       for (const hijo of new Set(hijos)) {          // each name appears once per block
@@ -241,5 +286,80 @@ describe('SIGA element order matches the XSD sequence', () => {
   it('exportación', () => {
     const e = { ...sample, tipoExpediente: 'exportacion' as const };
     expect(desorden(xmlBlocks(buildSigaExportXml([e], NOW)), xsdBlocks('ExportDUA.xsd'))).toEqual([]);
+  });
+});
+
+/*
+ * The DUA below loaded into SIGA without errors (docs/siga-muestras/ImportDUA-WH26070084A.xml).
+ * Rebuilding the same declaration from app data must give the same document: same blocks, same
+ * elements in the same order, same values — numbers compared as numbers, since SIGA writes
+ * "6.00" where we write "6.0000". The only intended difference is the header Remark, where
+ * the brokerage puts its standard text.
+ */
+describe('SIGA accepted DUA (WH26070084A)', () => {
+  const muestra = readFileSync(new URL('../../docs/siga-muestras/ImportDUA-WH26070084A.xml', import.meta.url), 'utf8');
+  const valor = (bloque: string, tag: string) => (bloque.match(new RegExp(`<${tag}>([^<]*)</${tag}>`)) ?? [])[1] ?? '';
+  const productosMuestra = [...muestra.matchAll(/<ImpDeclarationProduct>([\s\S]*?)<\/ImpDeclarationProduct>/g)].map((m) => m[1]);
+
+  const expediente: Expediente = {
+    ...sample,
+    declaracion: {
+      ...sample.declaracion, idSecuencia: '5866', tipoDespacho: 'GENERAL', administracionCodigo: '10150',
+      docEmbarque: 'WH26070084A', puertoEntrada: '', paisProcedenciaCodigo: '156', facturaComercialNo: '', eta: '', depositoDestino: '',
+    },
+    importador: { codigo: '131256767', nombre: 'MARCHA EIRL', tipoDocumento: 'RNC', paisDocumento: '214' },
+    consignatario: { codigo: '131256767', nombre: 'MARCHA EIRL', tipoDocumento: 'RNC', paisDocumento: '214' },
+    agenteAduanal: { codigo: '130339198', nombre: 'ARMESSAG, SRL', tipoDocumento: 'RNC', paisDocumento: '214' },
+    suplidores: [{ codigo: '15562111622016', nombre: 'WISE GLOBAL MARKET CORP', nacionalidad: 'PANAMÁ', tipoDocumento: 'TID' }],
+    contenedores: [],
+    valores: { tasaCambio: 60.92, valorFobTotal: 38081, seguro: 234.98, flete: 8380, otros: 0, valorCifTotal: 46695.98 },
+    regimenAduanero: { codigo: '1', nombre: 'DESPACHO A CONSUMO', acuerdo: '' },
+    pesoMercancia: { codigoMercancia: '', pesoBrutoKg: 13185.6, pesoNetoKg: 0 },
+    informacionAdicional: { ...emptyInformacionAdicional(), cargoControlNo: '26199501040800966-0257-001' },
+    partidas: productosMuestra.map((b, i) => withDerived({
+      ...emptyPartida(),
+      id: `m${i}`,
+      codigoPartida: valor(b, 'HSCode'),
+      descripcion: valor(b, 'ProductName'),
+      cantidad: Number(valor(b, 'Qty')),
+      unidad: 'UNIDADES',
+      valorFob: Number(valor(b, 'FOBValue')) * Number(valor(b, 'Qty')),
+      pesoKg: Number(valor(b, 'Weight')),
+      paisOrigen: 'CHINA',
+    })),
+  };
+  const nuestro = buildSigaImportXml([expediente], new Date(2026, 8, 3, 13, 17));
+
+  /** Each block as [tag, text] pairs in document order. */
+  const hojas = (xml: string, bloque: string) => [...xml.matchAll(new RegExp(`<${bloque}[^>]*>([\\s\\S]*?)</${bloque}>`, 'g'))].map((m) =>
+    [...m[1].matchAll(/<([A-Za-z]+)\s*\/>|<([A-Za-z]+)>([^<]*)<\/\2>/g)].map((x) => [x[1] ?? x[2], x[3] ?? ''] as [string, string]));
+  const cabecera = (xml: string) => hojas(xml.replace(/<ImpDeclaration(Supplier|Product|Container)>[\s\S]*?<\/ImpDeclaration\1>/g, ''), 'ImpDeclaration')[0];
+  const igual = (a: string, b: string) => a === b || (a !== '' && b !== '' && !Number.isNaN(Number(a)) && Number(a) === Number(b));
+
+  const comparar = (nuestros: [string, string][], suyos: [string, string][], ignorar: string[] = []) => {
+    expect(nuestros.map(([t]) => t)).toEqual(suyos.map(([t]) => t));
+    const distintos = suyos.filter(([t, v], i) => !ignorar.includes(t) && !igual(nuestros[i][1], v)).map(([t, v]) => `${t}: SIGA "${v}" / app "${nuestros.find((x) => x[0] === t)?.[1]}"`);
+    expect(distintos).toEqual([]);
+  };
+
+  it('same root and unqualified declaration', () => {
+    expect(nuestro).toContain('xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://aduanas.gob.do/XSD/ImportClearance/ImportDUA.xsd"');
+    expect(muestra).toContain('<ImpDeclaration xmlns="">');
+    expect(nuestro).toContain('<ImpDeclaration xmlns="">');
+  });
+
+  it('same header, element by element', () => {
+    comparar(cabecera(nuestro), cabecera(muestra), ['Remark']);
+  });
+
+  it('same supplier', () => {
+    comparar(hojas(nuestro, 'ImpDeclarationSupplier')[0], hojas(muestra, 'ImpDeclarationSupplier')[0]);
+  });
+
+  it('same 18 products, element by element', () => {
+    const suyos = hojas(muestra, 'ImpDeclarationProduct');
+    const nuestros = hojas(nuestro, 'ImpDeclarationProduct');
+    expect(nuestros).toHaveLength(18);
+    suyos.forEach((p, i) => comparar(nuestros[i], p));
   });
 });

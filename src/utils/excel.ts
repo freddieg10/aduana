@@ -4,7 +4,7 @@ import type { Partida, TipoDocumento, TipoExpediente } from '../types';
 import { emptyInformacionAdicional, type NewExpediente } from '../store/expedientesStore';
 import {
   ADMINISTRACIONES, AGENTE_ADUANAL_DEFAULT, ESTADOS_PRODUCTO, PAIS_RD, TASA_CAMBIO_DEFAULT, TIPOS_DOCUMENTO, makeDefaultChecklist,
-  findAdministracion, findRegimen,
+  findAdministracion, findRegimen, unidadSiga,
 } from '../data/catalogos';
 import { TIPO_DOCUMENTO_DEFAULT } from './documento';
 import { emptyPartida, withDerived } from './partida';
@@ -44,7 +44,11 @@ export type FieldKey =
   | 'codigoMercancia' | 'pesoBrutoKg' | 'pesoNetoKg'
   | 'codigoPartida' | 'codigoProducto' | 'descripcion' | 'organico' | 'cantidad' | 'unidad' | 'paisOrigen'
   | 'valorFob' | 'unitario' | 'facturaDva'
-  | 'marca' | 'modelo' | 'estadoProducto' | 'anio' | 'serial' | 'especificacion';
+  | 'marca' | 'modelo' | 'estadoProducto' | 'anio' | 'serial' | 'especificacion'
+  // detail behind the renglón's eye icon
+  | 'pesoKg' | 'descripcionAdicional' | 'temporal' | 'certificadoOrigen' | 'certificadoOrigenNo'
+  | 'gradoAlcohol' | 'precioVentaMenor'
+  | 'vehiculoTipo' | 'vehiculoChasis' | 'vehiculoColor' | 'vehiculoMotor' | 'vehiculoCc';
 
 const FIELD_ALIASES: Record<FieldKey, string[]> = {
   reference: ['reference', 'referencia', 'expediente', 'ref'],
@@ -121,6 +125,18 @@ const FIELD_ALIASES: Record<FieldKey, string[]> = {
   anio: ['anio', 'ano', 'year', 'productyear'],
   serial: ['serial', 'numeroserie', 'serialno', 'noserie'],
   especificacion: ['especificacion', 'specification', 'especificaciones'],
+  pesoKg: ['pesokg', 'peso', 'pesorenglon', 'pesoproducto', 'pesolinea', 'weight'],
+  descripcionAdicional: ['descripcionadicional', 'descripcionproducto', 'productdescription', 'descripciondetallada', 'descripcion2'],
+  temporal: ['temporal', 'productotemporal', 'tempproductyn', 'tempproduct'],
+  certificadoOrigen: ['certificadoorigen', 'certificadodeorigen', 'certorigen', 'tienecertificadoorigen', 'certificateorignyn', 'certificateoriginyn'],
+  certificadoOrigenNo: ['certificadoorigenno', 'nocertificadoorigen', 'numerocertificadoorigen', 'nocertificadodeorigen', 'numerocertificadodeorigen', 'certificateoriginno', 'nocertificado', 'numerocertificado'],
+  gradoAlcohol: ['gradoalcohol', 'gradoalcoholico', 'gradodealcohol', 'grado', 'alcohol', 'gradealcohol'],
+  precioVentaMenor: ['precioventamenor', 'precioventaalpormenor', 'preciodeventaalpormenor', 'precioalpormenor', 'precioventa', 'preciodeventa', 'pvp', 'customersalesprice', 'preciominorista'],
+  vehiculoTipo: ['vehiculotipo', 'tipovehiculo', 'tipodevehiculo', 'vehicletype'],
+  vehiculoChasis: ['vehiculochasis', 'chasis', 'chassis', 'nochasis', 'numerochasis', 'numerodechasis', 'vin', 'vehiclechassis'],
+  vehiculoColor: ['vehiculocolor', 'color', 'colorvehiculo', 'vehiclecolor'],
+  vehiculoMotor: ['vehiculomotor', 'motor', 'nomotor', 'numeromotor', 'numerodemotor', 'vehiclemotor'],
+  vehiculoCc: ['vehiculocc', 'cc', 'cilindraje', 'cilindrada', 'centimetroscubicos', 'vehiclecc'],
 };
 
 const ALIAS_LOOKUP: Map<string, FieldKey> = new Map();
@@ -240,23 +256,50 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array, opts: { sheets?: s
 const str = (v: unknown) => (v === undefined || v === null ? '' : String(v));
 const num = (v: unknown) => (typeof v === 'number' ? v : Number(v) || 0);
 
+/** A number from a cell that may carry %, a currency sign or thousands commas ("1,250.50", "40%"). */
+export function numero(v: unknown): number {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const s = str(v).replace(/[^\d.,-]/g, '');
+  if (!s) return 0;
+  // With both separators the last one is the decimal point; a lone comma is a decimal comma.
+  const normal = s.includes('.') && s.includes(',')
+    ? (s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, ''))
+    : s.replace(',', '.');
+  return Number(normal) || 0;
+}
+
+const SI = new Set(['SI', 'S', 'YES', 'Y', 'TRUE', 'VERDADERO', 'V', '1', 'X']);
+const NO = new Set(['NO', 'N', 'FALSE', 'FALSO', 'F', '0', '']);
+
+/** Yes/no cells: "Sí", "S", "X", 1, TRUE… are yes. `Boolean("NO")` would have said yes. */
+export function siNo(v: unknown): boolean {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  return SI.has(normalizeHeader(v).toUpperCase());
+}
+
+const esSiNo = (v: unknown) => typeof v === 'boolean' || typeof v === 'number' || SI.has(normalizeHeader(v).toUpperCase()) || NO.has(normalizeHeader(v).toUpperCase());
+
 export function rowToPartida(row: ParsedRow): Partida {
   const f = row.fields;
   const base = emptyPartida();
   const estado = ESTADOS_PRODUCTO.find(
     (e) => e.codigo === str(f.estadoProducto).toUpperCase() || e.nombre === str(f.estadoProducto).toUpperCase(),
   );
+  // A "certificado de origen" column may hold Sí/No or the certificate number itself.
+  const cert = f.certificadoOrigen;
+  const certNo = str(f.certificadoOrigenNo).trim() || (cert !== undefined && !esSiNo(cert) ? str(cert).trim() : '');
   // `unitario` is always derived from FOB / quantity, so a unit-price column is ignored.
   return withDerived({
     ...base,
     codigoPartida: str(f.codigoPartida),
     codigoProducto: str(f.codigoProducto),
     descripcion: str(f.descripcion),
-    organico: Boolean(f.organico),
-    cantidad: num(f.cantidad),
-    unidad: str(f.unidad) || base.unidad,
+    organico: siNo(f.organico),
+    cantidad: numero(f.cantidad),
+    unidad: unidadSiga(str(f.unidad)) || base.unidad,
     paisOrigen: str(f.paisOrigen),
-    valorFob: num(f.valorFob),
+    valorFob: numero(f.valorFob),
     facturaDva: str(f.facturaDva),
     marca: str(f.marca),
     modelo: str(f.modelo),
@@ -264,6 +307,20 @@ export function rowToPartida(row: ParsedRow): Partida {
     anio: str(f.anio),
     serial: str(f.serial),
     especificacion: str(f.especificacion),
+    pesoKg: numero(f.pesoKg),
+    descripcionAdicional: str(f.descripcionAdicional),
+    temporal: siNo(f.temporal),
+    certificadoOrigen: siNo(cert) || Boolean(certNo),
+    certificadoOrigenNo: certNo,
+    gradoAlcohol: numero(f.gradoAlcohol),
+    precioVentaMenor: numero(f.precioVentaMenor),
+    vehiculo: {
+      tipo: str(f.vehiculoTipo),
+      chasis: str(f.vehiculoChasis),
+      color: str(f.vehiculoColor),
+      motor: str(f.vehiculoMotor),
+      cc: numero(f.vehiculoCc),
+    },
   });
 }
 

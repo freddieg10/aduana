@@ -7,6 +7,7 @@ import {
 import { Add, Delete, Save } from '@mui/icons-material';
 import { useSettingsStore, type TarifaServicio } from '../../store/settingsStore';
 import { fmtDateTime } from '../../utils/date';
+import NumberField from '../../components/NumberField';
 
 /** Editable list of names (digitadores / gestores). */
 function ListaNombres({ titulo, nombres, onChange }: { titulo: string; nombres: string[]; onChange: (n: string[]) => void }) {
@@ -105,9 +106,9 @@ export default function SettingsPage() {
           <Grid container spacing={2}>
             {(['alcoholPorLitro', 'cajetilla20', 'cajetilla10'] as const).map((k) => (
               <Grid size={{ xs: 12, sm: 4 }} key={k}>
-                <TextField
-                  fullWidth type="number" label={t(`settings.isc_${k}`)}
-                  value={iscMontos[k]} onChange={(e) => setIscMontos({ [k]: Number(e.target.value) })}
+                <NumberField
+                  fullWidth label={t(`settings.isc_${k}`)}
+                  value={iscMontos[k]} onChange={(n) => setIscMontos({ [k]: n })}
                   slotProps={{ input: { startAdornment: <InputAdornment position="start">RD$</InputAdornment> }, htmlInput: { step: 0.01, min: 0 } }}
                 />
               </Grid>
@@ -135,7 +136,7 @@ export default function SettingsPage() {
                 {tarifario.map((tf) => (
                   <TableRow key={tf.id}>
                     <TableCell><TextField size="small" variant="standard" fullWidth value={tf.servicio} onChange={(e) => upd(tf.id, { servicio: e.target.value })} /></TableCell>
-                    <TableCell align="right"><TextField size="small" variant="standard" type="number" value={tf.precio} onChange={(e) => upd(tf.id, { precio: Number(e.target.value) })} sx={{ width: 110 }} /></TableCell>
+                    <TableCell align="right"><NumberField size="small" variant="standard" value={tf.precio} onChange={(n) => upd(tf.id, { precio: n })} sx={{ width: 110 }} /></TableCell>
                     <TableCell>
                       <TextField select size="small" variant="standard" value={tf.moneda} onChange={(e) => upd(tf.id, { moneda: e.target.value as TarifaServicio['moneda'] })} sx={{ width: 90 }}>
                         <MenuItem value="DOP">DOP</MenuItem>

@@ -143,4 +143,37 @@ describe('parsePartidas', () => {
     expect(partidas[0].unitario).toBe(5);
     expect(unmappedHeaders).toEqual(['Extra']);
   });
+
+  /* Everything behind the renglón's eye icon, as a client sheet would title it. */
+  it('imports the detail fields, not just the grid columns', () => {
+    const buf = workbook({ S: [
+      ['Partida', 'Descripción', 'Cantidad', 'Unidad', 'Valor FOB', 'Marca', 'Modelo', 'Año', 'Peso', 'Serial',
+        'Tipo de Vehículo', 'Chasis', 'Color', 'Motor', 'Cilindraje',
+        'Certificado de Origen', 'No. Certificado Origen', 'Temporal', 'Orgánico', 'Grado Alcohólico', 'Precio Venta', 'Descripción Adicional'],
+      ['8703.23.91', 'JEEP GRAND CHEROKEE', 1, 'UND', '28,500.00', 'JEEP', 'GRAND CHEROKEE', 2024, 2100, 'SN-1',
+        'JEEPETA', '1C4RJFAG5FC123456', 'NEGRO', 'V6-3.6', 3600,
+        'Sí', 'CO-2026-77', 'NO', 'NO', '', '', 'Usado, en buen estado'],
+      ['2208.30.20', 'WHISKY', 120, 'Litros', 480, '', '', '', '', '',
+        '', '', '', '', '',
+        'CO-99', '', 'X', 'no', '40%', 'RD$ 1,250.50', ''],
+    ] });
+    const { partidas, unmappedHeaders } = parsePartidas(buf);
+    expect(unmappedHeaders).toEqual([]);
+    expect(partidas[0]).toMatchObject({
+      unidad: '1', valorFob: 28_500, marca: 'JEEP', modelo: 'GRAND CHEROKEE', anio: '2024', pesoKg: 2100, serial: 'SN-1',
+      vehiculo: { tipo: 'JEEPETA', chasis: '1C4RJFAG5FC123456', color: 'NEGRO', motor: 'V6-3.6', cc: 3600 },
+      certificadoOrigen: true, certificadoOrigenNo: 'CO-2026-77', temporal: false, organico: false,
+      descripcionAdicional: 'Usado, en buen estado',
+    });
+    // A certificate number under "Certificado de Origen" means yes, with that number.
+    expect(partidas[1]).toMatchObject({
+      unidad: '10', certificadoOrigen: true, certificadoOrigenNo: 'CO-99', temporal: true, organico: false,
+      gradoAlcohol: 40, precioVentaMenor: 1250.5,
+    });
+  });
+
+  it('a "NO" in a yes/no column is no', () => {
+    const buf = workbook({ S: [['Partida', 'Descripción', 'Orgánico'], ['0101.21.00', 'caballo', 'NO'], ['0101.21.00', 'caballo', 'SI']] });
+    expect(parsePartidas(buf).partidas.map((p) => p.organico)).toEqual([false, true]);
+  });
 });

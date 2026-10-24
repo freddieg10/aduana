@@ -2,6 +2,9 @@ import { HashRouter, Routes, Route, Navigate } from "react-router";
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import type { PaletteMode } from '@mui/material';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { esES as gridEs, enUS as gridEn } from '@mui/x-data-grid/locales';
+import { esES as materialEs, enUS as materialEn } from '@mui/material/locale';
 import { useThemeStore } from './store/themeStore';
 import Layout from "./components/Layout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -18,7 +21,11 @@ import ClientPortalDetailPage from "./features/portal/ClientPortalDetailPage";
 import AccesoClientePage from "./features/portal/AccesoClientePage";
 import SettingsPage from "./features/settings/SettingsPage";
 
-const createAppTheme = (mode: PaletteMode) =>
+/*
+ * The data grids' own texts (toolbar, column menu, filters, pagination) follow the app language
+ * through the theme; without the locale they stay in English inside a Spanish screen.
+ */
+const createAppTheme = (mode: PaletteMode, idioma: string) =>
   createTheme({
     palette: {
       mode,
@@ -191,11 +198,13 @@ const createAppTheme = (mode: PaletteMode) =>
         }
       }
     },
-  });
+  }, ...(idioma.startsWith('en') ? [gridEn, materialEn] : [gridEs, materialEs]));
 
 function App() {
   const mode = useThemeStore((state) => state.mode);
-  const theme = useMemo(() => createAppTheme(mode), [mode]);
+  const { i18n } = useTranslation();
+  const idioma = i18n.language;
+  const theme = useMemo(() => createAppTheme(mode, idioma), [mode, idioma]);
 
   return (
     <ThemeProvider theme={theme}>

@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import type { Partida } from '../types';
 import { ESTADOS_PRODUCTO } from '../data/catalogos';
+import NumberField from './NumberField';
 
 interface Props {
   /** The line being edited. The parent mounts this dialog only while one is open. */
@@ -49,7 +50,7 @@ export default function PartidaDetailDialog({ partida, onClose, onSave }: Props)
             </TextField>
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}><TextField fullWidth size="small" label={t('detail.anio')} value={draft.anio} onChange={(e) => set({ anio: e.target.value })} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><TextField fullWidth size="small" type="number" label={t('detail.pesoKg')} value={draft.pesoKg} onChange={(e) => set({ pesoKg: Number(e.target.value) })} /></Grid>
+          <Grid size={{ xs: 6, sm: 3 }}><NumberField fullWidth size="small" label={t('detail.pesoKg')} value={draft.pesoKg} onChange={(n) => set({ pesoKg: n })} /></Grid>
           <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label={t('detail.serial')} value={draft.serial} onChange={(e) => set({ serial: e.target.value })} /></Grid>
           <Grid size={{ xs: 12 }}><TextField fullWidth size="small" label={t('detail.especificacion')} value={draft.especificacion} onChange={(e) => set({ especificacion: e.target.value })} /></Grid>
           <Grid size={{ xs: 12 }}><TextField fullWidth size="small" multiline rows={2} label={t('detail.descripcionAdicional')} value={draft.descripcionAdicional} onChange={(e) => set({ descripcionAdicional: e.target.value })} /></Grid>
@@ -67,8 +68,8 @@ export default function PartidaDetailDialog({ partida, onClose, onSave }: Props)
           <Grid size={{ xs: 12, sm: 5 }}>
             <TextField fullWidth size="small" label={t('detail.certificadoOrigenNo')} value={draft.certificadoOrigenNo} disabled={!draft.certificadoOrigen} onChange={(e) => set({ certificadoOrigenNo: e.target.value })} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" type="number" label={t('detail.gradoAlcohol')} value={draft.gradoAlcohol} onChange={(e) => set({ gradoAlcohol: Number(e.target.value) })} /></Grid>
-          <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" type="number" label={t('detail.precioVentaMenor')} value={draft.precioVentaMenor} onChange={(e) => set({ precioVentaMenor: Number(e.target.value) })} /></Grid>
+          <Grid size={{ xs: 12, sm: 6 }}><NumberField fullWidth size="small" label={t('detail.gradoAlcohol')} value={draft.gradoAlcohol} onChange={(n) => set({ gradoAlcohol: n })} /></Grid>
+          <Grid size={{ xs: 12, sm: 6 }}><NumberField fullWidth size="small" label={t('detail.precioVentaMenor')} value={draft.precioVentaMenor} onChange={(n) => set({ precioVentaMenor: n })} /></Grid>
         </Grid>
 
         <Divider sx={{ my: 2 }} />
@@ -78,7 +79,7 @@ export default function PartidaDetailDialog({ partida, onClose, onSave }: Props)
           <Grid size={{ xs: 12, sm: 8 }}><TextField fullWidth size="small" label={t('detail.vehiculoChasis')} value={draft.vehiculo.chasis} onChange={(e) => setVeh({ chasis: e.target.value })} /></Grid>
           <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth size="small" label={t('detail.vehiculoColor')} value={draft.vehiculo.color} onChange={(e) => setVeh({ color: e.target.value })} /></Grid>
           <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth size="small" label={t('detail.vehiculoMotor')} value={draft.vehiculo.motor} onChange={(e) => setVeh({ motor: e.target.value })} /></Grid>
-          <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth size="small" type="number" label={t('detail.vehiculoCc')} value={draft.vehiculo.cc} onChange={(e) => setVeh({ cc: Number(e.target.value) })} /></Grid>
+          <Grid size={{ xs: 12, sm: 4 }}><NumberField fullWidth size="small" label={t('detail.vehiculoCc')} value={draft.vehiculo.cc} onChange={(n) => setVeh({ cc: n })} /></Grid>
         </Grid>
       </DialogContent>
       <DialogActions>
